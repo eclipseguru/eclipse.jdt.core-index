@@ -192,6 +192,8 @@ import org.eclipse.jdt.internal.core.SetVariablesOperation;
 import org.eclipse.jdt.internal.core.builder.JavaBuilder;
 import org.eclipse.jdt.internal.core.builder.ModuleInfoBuilder;
 import org.eclipse.jdt.internal.core.builder.State;
+import org.eclipse.jdt.internal.core.index.solr.embedded.EmbeddedSolrManager;
+import org.eclipse.jdt.internal.core.index.solr.indexer.SolrIndexer;
 import org.eclipse.jdt.internal.core.nd.indexer.Indexer;
 import org.eclipse.jdt.internal.core.search.indexing.IndexManager;
 import org.eclipse.jdt.internal.core.util.MementoTokenizer;
@@ -5716,7 +5718,8 @@ public final class JavaCore extends Plugin {
 		IndexManager manager = JavaModelManager.getIndexManager();
 		manager.deleteIndexFiles(subMonitor.split(1));
 		manager.reset();
-		Indexer.getInstance().rebuildIndex(subMonitor.split(95));
+		Indexer.getInstance().rebuildIndex(subMonitor.split(50));
+		SolrIndexer.getInstance().rebuildIndex(subMonitor.split(45));
 		updateLegacyIndex(subMonitor.split(4));
 	}
 
@@ -6286,6 +6289,7 @@ public final class JavaCore extends Plugin {
 		try {
 			JavaModelManager.unregisterDebugOptionsListener();
 			JavaModelManager.getJavaModelManager().shutdown();
+			EmbeddedSolrManager.shutdown();
 		} finally {
 			// ensure we call super.stop as the last thing
 			super.stop(context);
@@ -6307,5 +6311,6 @@ public final class JavaCore extends Plugin {
 		JavaModelManager.registerDebugOptionsListener(context);
 		JavaModelManager.getJavaModelManager().startup();
 		Indexer.getInstance().rescanAll();
+		SolrIndexer.getInstance().rescanAll();
 	}
 }

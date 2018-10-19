@@ -56,6 +56,7 @@ import org.eclipse.jdt.internal.core.index.DiskIndex;
 import org.eclipse.jdt.internal.core.index.FileIndexLocation;
 import org.eclipse.jdt.internal.core.index.Index;
 import org.eclipse.jdt.internal.core.index.IndexLocation;
+import org.eclipse.jdt.internal.core.index.solr.indexer.SolrIndexer;
 import org.eclipse.jdt.internal.core.nd.indexer.Indexer;
 import org.eclipse.jdt.internal.core.nd.java.JavaIndex;
 import org.eclipse.jdt.internal.core.search.BasicSearchEngine;
@@ -78,6 +79,7 @@ public class IndexManager extends JobManager implements IIndexConstants {
 	 * The new indexer
 	 */
 	private Indexer indexer = Indexer.getInstance();
+	private SolrIndexer solrIndexer = SolrIndexer.getInstance();
 
 	/* need to save ? */
 	private boolean needToSave = false;
@@ -256,6 +258,7 @@ private void deleteIndexFiles(SimpleSet pathsToKeep, IProgressMonitor monitor) {
  */
 public synchronized void ensureIndexExists(IndexLocation indexLocation, IPath containerPath) {
 	this.indexer.makeWorkspacePathDirty(containerPath);
+	this.solrIndexer.makeWorkspacePathDirty(containerPath);
 	SimpleLookupTable states = getIndexStates();
 	Object state = states.get(indexLocation);
 	if (state == null) {
@@ -568,6 +571,7 @@ public void indexResolvedDocument(SearchDocument searchDocument, SearchParticipa
  */
 public void indexAll(IProject project) {
 	this.indexer.makeDirty(project);
+	this.solrIndexer.makeDirty(project);
 	if (JavaCore.getPlugin() == null) return;
 
 	try {
@@ -618,6 +622,7 @@ private boolean isJrt(String fileName) {
  */
 public void indexLibrary(IPath path, IProject requestingProject, URL indexURL, final boolean updateIndex) {
 	this.indexer.makeWorkspacePathDirty(path);
+	this.solrIndexer.makeWorkspacePathDirty(path);
 	// requestingProject is no longer used to cancel jobs but leave it here just in case
 	IndexLocation indexFile = null;
 	boolean forceIndexUpdate = false;
@@ -674,6 +679,7 @@ synchronized boolean addIndex(IPath containerPath, IndexLocation indexFile) {
 public void indexSourceFolder(JavaProject javaProject, IPath sourceFolder, char[][] inclusionPatterns, char[][] exclusionPatterns) {
 	IProject project = javaProject.getProject();
 	this.indexer.makeWorkspacePathDirty(sourceFolder);
+	this.solrIndexer.makeWorkspacePathDirty(sourceFolder);
 	if (this.jobEnd > this.jobStart) {
 		// skip it if a job to index the project is already in the queue
 		IndexRequest request = new IndexAllProject(project, this);
@@ -737,6 +743,7 @@ private void rebuildIndex(IndexLocation indexLocation, IPath containerPath) {
 }
 private void rebuildIndex(IndexLocation indexLocation, IPath containerPath, final boolean updateIndex) {
 	this.indexer.makeWorkspacePathDirty(containerPath);
+	this.solrIndexer.makeWorkspacePathDirty(containerPath);
 	Object target = JavaModel.getTarget(containerPath, true);
 	if (target == null) return;
 
@@ -796,6 +803,7 @@ public synchronized Index recreateIndex(IPath containerPath) {
  */
 public void remove(String containerRelativePath, IPath indexedContainer){
 	this.indexer.makeWorkspacePathDirty(indexedContainer);
+	this.solrIndexer.makeWorkspacePathDirty(indexedContainer);
 	request(new RemoveFromIndex(containerRelativePath, indexedContainer, this));
 }
 /**
@@ -806,6 +814,7 @@ public synchronized void removeIndex(IPath containerPath) {
 	if (VERBOSE || DEBUG)
 		Util.verbose("removing index " + containerPath); //$NON-NLS-1$
 	this.indexer.makeWorkspacePathDirty(containerPath);
+	this.solrIndexer.makeWorkspacePathDirty(containerPath);
 	IndexLocation indexLocation = computeIndexLocation(containerPath);
 	Index index = getIndex(indexLocation);
 	File indexFile = null;
@@ -836,6 +845,7 @@ public synchronized void removeIndexPath(IPath path) {
 	if (VERBOSE || DEBUG)
 		Util.verbose("removing index path " + path); //$NON-NLS-1$
 	this.indexer.makeWorkspacePathDirty(path);
+	this.solrIndexer.makeWorkspacePathDirty(path);
 	Object[] keyTable = this.indexes.keyTable;
 	Object[] valueTable = this.indexes.valueTable;
 	IndexLocation[] locations = null;
@@ -883,6 +893,7 @@ public synchronized void removeIndexPath(IPath path) {
  */
 public synchronized void removeIndexFamily(IPath path) {
 	this.indexer.makeWorkspacePathDirty(path);
+	this.solrIndexer.makeWorkspacePathDirty(path);
 	// only finds cached index files... shutdown removes all non-cached index files
 	ArrayList toRemove = null;
 	Object[] containerPaths = this.indexLocations.keyTable;
@@ -904,6 +915,7 @@ public synchronized void removeIndexFamily(IPath path) {
  */
 public void removeSourceFolderFromIndex(JavaProject javaProject, IPath sourceFolder, char[][] inclusionPatterns, char[][] exclusionPatterns) {
 	this.indexer.makeWorkspacePathDirty(sourceFolder);
+	this.solrIndexer.makeWorkspacePathDirty(sourceFolder);
 	IProject project = javaProject.getProject();
 	if (this.jobEnd > this.jobStart) {
 		// skip it if a job to index the project is already in the queue
@@ -1049,6 +1061,7 @@ public void scheduleDocumentIndexing(final SearchDocument searchDocument, IPath 
 	IPath targetLocation = JavaIndex.getLocationForPath(new Path(searchDocument.getPath()));
 	if (targetLocation != null) {
 		this.indexer.makeDirty(targetLocation);
+		this.solrIndexer.makeDirty(targetLocation);
 	}
 	request(new IndexRequest(container, this) {
 		@Override

@@ -9,6 +9,22 @@
 	<classpathentry kind="src" path="formatter"/>
 	<classpathentry kind="src" path="model"/>
 	<classpathentry kind="src" path="search"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/commons-math3-3.6.1.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-analyzers-common-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-classification-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-codecs-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-core-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-expressions-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-grouping-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-highlighter-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-join-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-misc-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-queries-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-queryparser-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/lucene-suggest-7.5.0.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/solr-core-7.5.0.jar" sourcepath="lib-solr/solr-7.5.0-src.zip"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/solr-solrj-7.5.0.jar" sourcepath="lib-solr/solr-7.5.0-src.zip"/>
+	<classpathentry exported="true" kind="lib" path="lib-solr/zookeeper-3.4.11.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="output" path="bin"/>

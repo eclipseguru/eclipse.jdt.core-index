@@ -141,6 +141,8 @@ import org.eclipse.jdt.internal.core.builder.JavaBuilder;
 import org.eclipse.jdt.internal.core.dom.SourceRangeVerifier;
 import org.eclipse.jdt.internal.core.dom.rewrite.RewriteEventStore;
 import org.eclipse.jdt.internal.core.hierarchy.TypeHierarchy;
+import org.eclipse.jdt.internal.core.index.solr.SolrIndex;
+import org.eclipse.jdt.internal.core.index.solr.indexer.SolrIndexer;
 import org.eclipse.jdt.internal.core.nd.IReader;
 import org.eclipse.jdt.internal.core.nd.Nd;
 import org.eclipse.jdt.internal.core.nd.db.Database;
@@ -400,6 +402,10 @@ public class JavaModelManager implements ISaveParticipant, IContentTypeChangeLis
 	private static final String INDEX_INDEXER_SPACE = JavaCore.PLUGIN_ID + "/debug/index/space" ; //$NON-NLS-1$
 	private static final String INDEX_INDEXER_TIMING = JavaCore.PLUGIN_ID + "/debug/index/timing" ; //$NON-NLS-1$
 	private static final String INDEX_INDEXER_LOG_SIZE_MEGS = JavaCore.PLUGIN_ID + "/debug/index/logsizemegs"; //$NON-NLS-1$
+	
+	private static final String INDEX_SOLR_INDEXER_DEBUG = JavaCore.PLUGIN_ID + "/debug/index/solr/indexer" ; //$NON-NLS-1$
+	private static final String INDEX_SOLR_INDEXER_SELFTEST = JavaCore.PLUGIN_ID + "/debug/index/solr/selftest" ; //$NON-NLS-1$
+	private static final String INDEX_SOLR_SEARCH = JavaCore.PLUGIN_ID + "/debug/index/solr/search" ; //$NON-NLS-1$
 
 	public static final String COMPLETION_PERF = JavaCore.PLUGIN_ID + "/perf/completion" ; //$NON-NLS-1$
 	public static final String SELECTION_PERF = JavaCore.PLUGIN_ID + "/perf/selection" ; //$NON-NLS-1$
@@ -1910,6 +1916,9 @@ public class JavaModelManager implements ISaveParticipant, IContentTypeChangeLis
 				Indexer.DEBUG_SELFTEST = debug && options.getBooleanOption(INDEX_INDEXER_SELFTEST, false);
 				Indexer.DEBUG_LOG_SIZE_MB = debug ? options.getIntegerOption(INDEX_INDEXER_LOG_SIZE_MEGS, 0) : 0;
 				Nd.sDEBUG_LOCKS = debug && options.getBooleanOption(INDEX_LOCKS_DEBUG, false);
+				SolrIndexer.DEBUG = debug && options.getBooleanOption(INDEX_SOLR_INDEXER_DEBUG, true);
+				SolrIndexer.DEBUG_SELFTEST = debug && options.getBooleanOption(INDEX_SOLR_INDEXER_SELFTEST, true);
+				SolrIndex.DEBUG_SEARCH = debug && options.getBooleanOption(INDEX_SOLR_SEARCH, true);
 
 				// configure performance options
 				if(PerformanceStats.ENABLED) {
