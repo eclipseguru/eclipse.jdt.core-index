@@ -14,7 +14,7 @@
 package org.eclipse.jdt.core.tests.model;
 
 import java.util.Enumeration;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
@@ -23,8 +23,24 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.jdt.core.*;
-import org.eclipse.jdt.internal.core.*;
+import org.eclipse.jdt.core.IBuffer;
+import org.eclipse.jdt.core.IBufferChangedListener;
+import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IOpenable;
+import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.WorkingCopyOwner;
+import org.eclipse.jdt.internal.core.BufferCache;
+import org.eclipse.jdt.internal.core.BufferManager;
+import org.eclipse.jdt.internal.core.ElementCache;
+import org.eclipse.jdt.internal.core.JavaElementInfo;
+import org.eclipse.jdt.internal.core.JavaModelCache;
+import org.eclipse.jdt.internal.core.Openable;
+import org.eclipse.jdt.internal.core.OpenableElementInfo;
+import org.eclipse.jdt.internal.core.PackageFragmentRoot;
 import org.eclipse.jdt.internal.core.util.LRUCache.LRUCacheEntry;
 import org.eclipse.jdt.internal.core.util.MementoTokenizer;
 
@@ -450,7 +466,7 @@ public class OverflowingCacheTests extends ModifyingResourceTests {
 			cache.put(openables[i], buffers[i]);
 		}
 
-		Hashtable<IOpenable, LRUCacheEntry<IOpenable, IBuffer>> table = cache.getEntryTable();
+		HashMap<IOpenable, LRUCacheEntry<IOpenable, IBuffer>> table = cache.getEntryTable();
 		assertEquals("Hashtable wrong size", 900, table.size());
 
 		int actualCurrent = cache.getCurrentSpace();
@@ -665,7 +681,7 @@ public class OverflowingCacheTests extends ModifyingResourceTests {
 			cache.put(openables[i], new MockInfo(i));
 		}
 
-		Hashtable<OverflowingTestOpenable, LRUCacheEntry<OverflowingTestOpenable, JavaElementInfo>> table = cache.getEntryTable();
+		HashMap<OverflowingTestOpenable, LRUCacheEntry<OverflowingTestOpenable, JavaElementInfo>> table = cache.getEntryTable();
 		assertEquals("Hashtable wrong size", 900, table.size());
 		int actualCurrent = cache.getCurrentSpace();
 		assertEquals("current space incorrect", 900, actualCurrent);

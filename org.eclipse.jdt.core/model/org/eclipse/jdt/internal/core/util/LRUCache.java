@@ -14,8 +14,7 @@
 package org.eclipse.jdt.internal.core.util;
 
 import java.text.NumberFormat;
-import java.util.Enumeration;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.List;
 
 import org.eclipse.jdt.internal.core.JavaElement;
@@ -268,9 +267,9 @@ public class LRUCache<K, V> implements Cloneable {
 	protected int timestampCounter;
 
 	/**
-	 * Hash table for fast random access to cache entries
+	 * Hash map for fast random access to cache entries
 	 */
-	protected Hashtable<K, LRUCacheEntry<K, V>> entryTable;
+	protected HashMap<K, LRUCacheEntry<K, V>> entryTable;
 
 	/**
 	 * Start of queue (most recently used entry)
@@ -302,7 +301,7 @@ public class LRUCache<K, V> implements Cloneable {
 	public LRUCache(int size) {
 		this.timestampCounter = this.currentSpace = 0;
 		this.entryQueue = this.entryQueueTail = null;
-		this.entryTable = new Hashtable<>(size);
+		this.entryTable = new HashMap<>(size);
 		this.spaceLimit = size;
 	}
 
@@ -335,7 +334,7 @@ public class LRUCache<K, V> implements Cloneable {
 	public void flush() {
 		this.currentSpace = 0;
 		LRUCacheEntry<K, V> entry = this.entryQueueTail; // Remember last entry
-		this.entryTable = new Hashtable<>();  // Clear it out
+		this.entryTable = new HashMap<>();  // Clear it out
 		this.entryQueue = this.entryQueueTail = null;
 		while (entry != null) {  // send deletion notifications in LRU order
 			entry = entry.previous;
@@ -420,44 +419,6 @@ public class LRUCache<K, V> implements Cloneable {
 	 */
 	public int getSpaceLimit() {
 		return this.spaceLimit;
-	}
-
-	/**
-	 * Returns an Enumeration of the keys currently in the cache.
-	 */
-	public Enumeration<K> keys() {
-		return this.entryTable.keys();
-	}
-
-	/**
-	 * Returns an enumeration that iterates over all the keys and values
-	 * currently in the cache.
-	 */
-	public ICacheEnumeration<K, V> keysAndValues() {
-		return new ICacheEnumeration<K, V>() {
-
-			Enumeration<LRUCacheEntry<K, V>> values = LRUCache.this.entryTable.elements();
-			LRUCacheEntry<K, V> entry;
-
-			@Override
-			public boolean hasMoreElements() {
-				return this.values.hasMoreElements();
-			}
-
-			@Override
-			public K nextElement() {
-				this.entry = this.values.nextElement();
-				return this.entry.key;
-			}
-
-			@Override
-			public V getValue() {
-				if (this.entry == null) {
-					throw new java.util.NoSuchElementException();
-				}
-				return this.entry.value;
-			}
-		};
 	}
 
 	/**
