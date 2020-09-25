@@ -15,19 +15,53 @@ package org.eclipse.jdt.internal.core.search.matching;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.*;
-import org.eclipse.jdt.core.*;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.core.search.*;
-import org.eclipse.jdt.internal.compiler.ast.*;
+import org.eclipse.jdt.core.search.IJavaSearchConstants;
+import org.eclipse.jdt.core.search.SearchMatch;
+import org.eclipse.jdt.core.search.SearchPattern;
+import org.eclipse.jdt.core.search.TypeDeclarationMatch;
+import org.eclipse.jdt.core.search.TypeReferenceMatch;
+import org.eclipse.jdt.internal.compiler.ast.ASTNode;
+import org.eclipse.jdt.internal.compiler.ast.Annotation;
+import org.eclipse.jdt.internal.compiler.ast.ArrayTypeReference;
+import org.eclipse.jdt.internal.compiler.ast.Expression;
+import org.eclipse.jdt.internal.compiler.ast.ImportReference;
+import org.eclipse.jdt.internal.compiler.ast.NameReference;
+import org.eclipse.jdt.internal.compiler.ast.ParameterizedQualifiedTypeReference;
+import org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference;
+import org.eclipse.jdt.internal.compiler.ast.QualifiedNameReference;
+import org.eclipse.jdt.internal.compiler.ast.QualifiedTypeReference;
+import org.eclipse.jdt.internal.compiler.ast.Reference;
+import org.eclipse.jdt.internal.compiler.ast.SingleNameReference;
+import org.eclipse.jdt.internal.compiler.ast.SingleTypeReference;
+import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.TypeReference;
 import org.eclipse.jdt.internal.compiler.env.IBinaryType;
-import org.eclipse.jdt.internal.compiler.lookup.*;
-import org.eclipse.jdt.internal.compiler.util.SimpleSet;
+import org.eclipse.jdt.internal.compiler.lookup.ArrayBinding;
+import org.eclipse.jdt.internal.compiler.lookup.BaseTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.Binding;
+import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
+import org.eclipse.jdt.internal.compiler.lookup.FieldBinding;
+import org.eclipse.jdt.internal.compiler.lookup.LocalTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.MemberTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.MethodBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ParameterizedTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemFieldBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemReferenceBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
+import org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 import org.eclipse.jdt.internal.core.JavaElement;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -221,7 +255,7 @@ protected void matchLevelAndReportImportRef(ImportReference importRef, Binding b
 protected void matchReportImportRef(ImportReference importRef, Binding binding, IJavaElement element, int accuracy, MatchLocator locator) throws CoreException {
 	if (this.isDeclarationOfReferencedTypesPattern) {
 		if ((element = findElement(element, accuracy)) != null) {
-			SimpleSet knownTypes = ((DeclarationOfReferencedTypesPattern) this.pattern).knownTypes;
+			HashSet<IType> knownTypes = ((DeclarationOfReferencedTypesPattern) this.pattern).knownTypes;
 			while (binding instanceof ReferenceBinding) {
 				ReferenceBinding typeBinding = (ReferenceBinding) binding;
 				reportDeclaration(typeBinding, 1, locator, knownTypes);
@@ -536,7 +570,7 @@ void matchReportReference(Expression expr, int lastIndex, TypeBinding refBinding
 protected int referenceType() {
 	return IJavaElement.TYPE;
 }
-protected void reportDeclaration(ASTNode reference, IJavaElement element, MatchLocator locator, SimpleSet knownTypes) throws CoreException {
+protected void reportDeclaration(ASTNode reference, IJavaElement element, MatchLocator locator, HashSet<IType> knownTypes) throws CoreException {
 	int maxType = -1;
 	TypeBinding typeBinding = null;
 	if (reference instanceof TypeReference) {
@@ -585,7 +619,7 @@ protected void reportDeclaration(ASTNode reference, IJavaElement element, MatchL
 	typeBinding = typeBinding.erasure();
 	reportDeclaration((ReferenceBinding) typeBinding, maxType, locator, knownTypes);
 }
-protected void reportDeclaration(ReferenceBinding typeBinding, int maxType, MatchLocator locator, SimpleSet knownTypes) throws CoreException {
+protected void reportDeclaration(ReferenceBinding typeBinding, int maxType, MatchLocator locator, HashSet<IType> knownTypes) throws CoreException {
 	IType type = locator.lookupType(typeBinding);
 	if (type == null) return; // case of a secondary type
 
@@ -598,7 +632,7 @@ protected void reportDeclaration(ReferenceBinding typeBinding, int maxType, Matc
 		info = locator.getBinaryInfo((org.eclipse.jdt.internal.core.ClassFile) type.getClassFile(), resource);
 	}
 	while (maxType >= 0 && type != null) {
-		if (!knownTypes.includes(type)) {
+		if (!knownTypes.contains(type)) {
 			if (isBinary) {
 				locator.reportBinaryMemberDeclaration(resource, type, typeBinding, info, SearchMatch.A_ACCURATE);
 			} else {

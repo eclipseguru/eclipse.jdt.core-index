@@ -22,6 +22,8 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.jar.Manifest;
 import java.util.zip.ZipEntry;
@@ -43,7 +45,6 @@ import org.eclipse.jdt.internal.compiler.env.NameEnvironmentAnswer;
 import org.eclipse.jdt.internal.compiler.lookup.BinaryTypeBinding.ExternalAnnotationStatus;
 import org.eclipse.jdt.internal.compiler.lookup.TypeConstants;
 import org.eclipse.jdt.internal.compiler.util.SimpleLookupTable;
-import org.eclipse.jdt.internal.compiler.util.SimpleSet;
 import org.eclipse.jdt.internal.compiler.util.SuffixConstants;
 import org.eclipse.jdt.internal.core.util.Util;
 
@@ -54,24 +55,25 @@ final boolean isOnModulePath;
 static class PackageCacheEntry {
 	long lastModified;
 	long fileSize;
-	SimpleSet packageSet;
+	HashSet<String> packageSet;
 
-	PackageCacheEntry(long lastModified, long fileSize, SimpleSet packageSet) {
+	PackageCacheEntry(long lastModified, long fileSize, HashSet<String> packageSet) {
 		this.lastModified = lastModified;
 		this.fileSize = fileSize;
 		this.packageSet = packageSet;
 	}
 }
 
-protected static SimpleLookupTable PackageCache = new SimpleLookupTable();
+protected static ConcurrentHashMap<String, PackageCacheEntry> PackageCache = new ConcurrentHashMap();
+// FIXME: why is ModuleCache not being used?
 protected static SimpleLookupTable ModuleCache = new SimpleLookupTable();
 
-protected static void addToPackageSet(SimpleSet packageSet, String fileName, boolean endsWithSep) {
+protected static void addToPackageSet(HashSet<String> packageSet, String fileName, boolean endsWithSep) {
 	int last = endsWithSep ? fileName.length() : fileName.lastIndexOf('/');
 	while (last > 0) {
 		// extract the package name
 		String packageName = fileName.substring(0, last);
-		if (packageSet.addIfNotIncluded(packageName) == null)
+		if (!packageSet.add(packageName))
 			return; // already existed
 		last = packageName.lastIndexOf('/');
 	}
@@ -82,21 +84,21 @@ protected static void addToPackageSet(SimpleSet packageSet, String fileName, boo
  * Calculate and cache the package list available in the zipFile.
  * @return A SimpleSet with the all the package names in the zipFile.
  */
-protected SimpleSet findPackageSet() {
+protected HashSet<String> findPackageSet() {
 	String zipFileName = this.zipFilename;
-	PackageCacheEntry cacheEntry = (PackageCacheEntry) PackageCache.get(zipFileName);
+	PackageCacheEntry cacheEntry = PackageCache.get(zipFileName);
 	long timestamp = this.lastModified();
 	long fileSize = new File(zipFileName).length();
 	if (cacheEntry != null && cacheEntry.lastModified == timestamp && cacheEntry.fileSize == fileSize) {
 		return cacheEntry.packageSet;
 	}
-	final SimpleSet packageSet = new SimpleSet(41);
+	final HashSet<String> packageSet = new HashSet<>(41);
 	packageSet.add(""); //$NON-NLS-1$
 	readJarContent(packageSet);
 	PackageCache.put(zipFileName, new PackageCacheEntry(timestamp, fileSize, packageSet));
 	return packageSet;
 }
-protected String readJarContent(final SimpleSet packageSet) {
+protected String readJarContent(final HashSet<String> packageSet) {
 	String modInfo = null;
 	for (Enumeration e = this.zipFile.entries(); e.hasMoreElements(); ) {
 		String fileName = ((ZipEntry) e.nextElement()).getName();
@@ -152,7 +154,7 @@ ZipFile zipFile;
 ZipFile annotationZipFile;
 long lastModified;
 boolean closeZipFileAtEnd;
-private SimpleSet knownPackageNames;
+private HashSet<String> knownPackageNames;
 AccessRuleSet accessRuleSet;
 String externalAnnotationPath;
 // Meant for ClasspathMultiReleaseJar, not used in here
@@ -322,12 +324,12 @@ public boolean isPackage(String qualifiedPackageName, String moduleName) {
 	}
 	if (this.knownPackageNames == null)
 		scanContent();
-	return this.knownPackageNames.includes(qualifiedPackageName);
+	return this.knownPackageNames.contains(qualifiedPackageName);
 }
 @Override
 public boolean hasCompilationUnit(String pkgName, String moduleName) {
 	if (scanContent()) {
-		if (!this.knownPackageNames.includes(pkgName)) {
+		if (!this.knownPackageNames.contains(pkgName)) {
 			// Don't waste time walking through the zip if we know that it doesn't
 			// contain a directory that matches pkgName
 			return false;
@@ -363,7 +365,7 @@ private boolean scanContent() {
 		}
 		return true;
 	} catch(Exception e) {
-		this.knownPackageNames = new SimpleSet(); // assume for this build the zipFile is empty
+		this.knownPackageNames = new HashSet<>(); // assume for this build the zipFile is empty
 		return false;
 	}
 }
@@ -418,10 +420,9 @@ public Manifest getManifest() {
 public char[][] listPackages() {
 	if (!scanContent()) // ensure zipFile is initialized
 		return null;
-	char[][] result = new char[this.knownPackageNames.elementSize][];
+	char[][] result = new char[this.knownPackageNames.size()][];
 	int count = 0;
-	for (int i=0; i<this.knownPackageNames.values.length; i++) {
-		String string = (String) this.knownPackageNames.values[i];
+	for (String string : this.knownPackageNames) {
 		if (string != null &&!string.isEmpty()) {
 			result[count++] = string.replace('/', '.').toCharArray();
 		}

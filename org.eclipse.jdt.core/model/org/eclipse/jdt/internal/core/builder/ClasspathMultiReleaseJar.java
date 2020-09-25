@@ -3,6 +3,7 @@ package org.eclipse.jdt.internal.core.builder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
@@ -20,7 +21,6 @@ import org.eclipse.jdt.internal.compiler.env.IModule;
 import org.eclipse.jdt.internal.compiler.env.NameEnvironmentAnswer;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.lookup.BinaryTypeBinding.ExternalAnnotationStatus;
-import org.eclipse.jdt.internal.compiler.util.SimpleSet;
 import org.eclipse.jdt.internal.compiler.util.SuffixConstants;
 import org.eclipse.jdt.internal.core.util.Util;
 
@@ -114,7 +114,7 @@ public class ClasspathMultiReleaseJar extends ClasspathJar {
 	}
 
 	@Override
-	protected String readJarContent(final SimpleSet packageSet) {
+	protected String readJarContent(final HashSet<String> packageSet) {
 		String modInfo = null;
 		for (Enumeration<? extends ZipEntry> e = this.zipFile.entries(); e.hasMoreElements(); ) {
 			String fileName = ((ZipEntry) e.nextElement()).getName();

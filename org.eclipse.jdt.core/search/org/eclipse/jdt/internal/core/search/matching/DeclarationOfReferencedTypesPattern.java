@@ -13,19 +13,21 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core.search.matching;
 
+import java.util.HashSet;
+
 import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.internal.compiler.util.SimpleSet;
+import org.eclipse.jdt.core.IType;
 
 public class DeclarationOfReferencedTypesPattern extends TypeReferencePattern {
 
-protected SimpleSet knownTypes;
+protected HashSet<IType> knownTypes;
 protected IJavaElement enclosingElement;
 
 public DeclarationOfReferencedTypesPattern(IJavaElement enclosingElement) {
 	super(null, null, R_PATTERN_MATCH);
 
 	this.enclosingElement = enclosingElement;
-	this.knownTypes = new SimpleSet();
+	this.knownTypes = new HashSet<>();
 	this.mustResolve = true;
 }
 }

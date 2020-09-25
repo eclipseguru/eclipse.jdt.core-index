@@ -49,7 +49,7 @@ public abstract class NameMatchRequestorWrapper {
 	/**
 	 * Cache package handles to optimize memory.
 	 */
-	private HashtableOfStringArrayToObject packageHandles;
+	private HashtableOfStringArrayToObject<IPackageFragment> packageHandles;
 	private Object lastProject;
 	private long complianceValue;
 
@@ -106,7 +106,7 @@ private IType createTypeFromJar(String resourcePath, int separatorIndex) throws 
 		if (root == null) return null;
 		this.lastPkgFragmentRootPath= jarPath;
 		this.lastPkgFragmentRoot= root;
-		this.packageHandles= new HashtableOfStringArrayToObject(5);
+		this.packageHandles= new HashtableOfStringArrayToObject<>(5);
 	}
 	// create handle
 	String classFilePath= resourcePath.substring(separatorIndex + 1);
@@ -122,7 +122,7 @@ private IType createTypeFromJar(String resourcePath, int separatorIndex) throws 
 	} else {
 		pkgName = CharOperation.NO_STRINGS;
 	}
-	IPackageFragment pkgFragment= (IPackageFragment) this.packageHandles.get(pkgName);
+	IPackageFragment pkgFragment= this.packageHandles.get(pkgName);
 	if (pkgFragment == null) {
 		pkgFragment= ((PackageFragmentRoot) this.lastPkgFragmentRoot).getPackageFragment(pkgName, moduleName); //BUG 478143
 		// filter org.apache.commons.lang.enum package for projects above 1.5
@@ -153,7 +153,7 @@ private IType createTypeFromPath(String resourcePath, String simpleTypeName, cha
 		if (root == null) return null;
 		this.lastPkgFragmentRoot = root;
 		this.lastPkgFragmentRootPath = root.internalPath().toString();
-		this.packageHandles = new HashtableOfStringArrayToObject(5);
+		this.packageHandles = new HashtableOfStringArrayToObject<>(5);
 	}
 	// create handle
 	resourcePath = resourcePath.substring(this.lastPkgFragmentRootPath.length() + 1);
@@ -166,7 +166,7 @@ private IType createTypeFromPath(String resourcePath, String simpleTypeName, cha
 	} else {
 		pkgName = CharOperation.NO_STRINGS;
 	}
-	IPackageFragment pkgFragment= (IPackageFragment) this.packageHandles.get(pkgName);
+	IPackageFragment pkgFragment= this.packageHandles.get(pkgName);
 	if (pkgFragment == null) {
 		pkgFragment= ((PackageFragmentRoot) this.lastPkgFragmentRoot).getPackageFragment(pkgName);
 		this.packageHandles.put(pkgName, pkgFragment);

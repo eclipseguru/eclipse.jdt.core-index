@@ -39,14 +39,13 @@ import org.eclipse.jdt.internal.compiler.env.IModule.IModuleReference;
 import org.eclipse.jdt.internal.compiler.env.IMultiModuleEntry;
 import org.eclipse.jdt.internal.compiler.env.NameEnvironmentAnswer;
 import org.eclipse.jdt.internal.compiler.util.JRTUtil;
-import org.eclipse.jdt.internal.compiler.util.SimpleSet;
 import org.eclipse.jdt.internal.compiler.util.SuffixConstants;
 import org.eclipse.jdt.internal.core.JavaProject;
 
 public class ClasspathJrt extends ClasspathLocation implements IMultiModuleEntry {
 
-//private HashMap<String, SimpleSet> packagesInModule = null;
-protected static HashMap<String, HashMap<String, SimpleSet>> PackageCache = new HashMap<>();
+//private HashMap<String, HashSet<String>> packagesInModule = null;
+protected static HashMap<String, HashMap<String, HashSet<String>>> PackageCache = new HashMap<>();
 protected static HashMap<String, HashMap<String, IModule>> ModulesCache = new HashMap<>();
 String externalAnnotationPath;
 protected ZipFile annotationZipFile;
@@ -79,21 +78,21 @@ void setZipFile(String zipFilename) {
 /**
  * Calculate and cache the package list available in the zipFile.
  * @param jrt The ClasspathJar to use
- * @return A SimpleSet with the all the package names in the zipFile.
+ * @return A HashSet<String> with the all the package names in the zipFile.
  */
-static HashMap<String, SimpleSet> findPackagesInModules(final ClasspathJrt jrt) {
+static HashMap<String, HashSet<String>> findPackagesInModules(final ClasspathJrt jrt) {
 	String zipFileName = jrt.zipFilename;
-	HashMap<String, SimpleSet> cache = PackageCache.get(jrt.getKey());
+	HashMap<String, HashSet<String>> cache = PackageCache.get(jrt.getKey());
 	if (cache != null) {
 		return cache;
 	}
-	final HashMap<String, SimpleSet> packagesInModule = new HashMap<>();
+	final HashMap<String, HashSet<String>> packagesInModule = new HashMap<>();
 	PackageCache.put(zipFileName, packagesInModule);
 	try {
 		final File imageFile = jrt.jrtFile;
 		org.eclipse.jdt.internal.compiler.util.JRTUtil.walkModuleImage(imageFile,
 				new org.eclipse.jdt.internal.compiler.util.JRTUtil.JrtFileVisitor<Path>() {
-			SimpleSet packageSet = null;
+			HashSet<String> packageSet = null;
 			@Override
 			public FileVisitResult visitPackage(Path dir, Path mod, BasicFileAttributes attrs) throws IOException {
 				ClasspathJar.addToPackageSet(this.packageSet, dir.toString(), true);
@@ -108,7 +107,7 @@ static HashMap<String, SimpleSet> findPackagesInModules(final ClasspathJrt jrt) 
 			@Override
 			public FileVisitResult visitModule(Path path, String name) throws IOException {
 				jrt.acceptModule(JRTUtil.getClassfileContent(imageFile, IModule.MODULE_INFO_CLASS, name), name);
-				this.packageSet = new SimpleSet(41);
+				this.packageSet = new HashSet<String>(41);
 				this.packageSet.add(""); //$NON-NLS-1$
 				if (name.endsWith("/")) { //$NON-NLS-1$
 					name = name.substring(0, name.length() - 1);
@@ -131,7 +130,7 @@ public static void loadModules(final ClasspathJrt jrt) {
 			final File imageFile = jrt.jrtFile;
 			org.eclipse.jdt.internal.compiler.util.JRTUtil.walkModuleImage(imageFile,
 					new org.eclipse.jdt.internal.compiler.util.JRTUtil.JrtFileVisitor<Path>() {
-				SimpleSet packageSet = null;
+				HashSet<String> packageSet = null;
 
 				@Override
 				public FileVisitResult visitPackage(Path dir, Path mod, BasicFileAttributes attrs)
@@ -297,7 +296,7 @@ public IModule getModule(String moduleName) {
 }
 @Override
 public Collection<String> getModuleNames(Collection<String> limitModules) {
-	HashMap<String, SimpleSet> cache = findPackagesInModules(this);
+	HashMap<String, HashSet<String>> cache = findPackagesInModules(this);
 	if (cache != null)
 		return selectModules(cache.keySet(), limitModules);
 	return Collections.emptyList();

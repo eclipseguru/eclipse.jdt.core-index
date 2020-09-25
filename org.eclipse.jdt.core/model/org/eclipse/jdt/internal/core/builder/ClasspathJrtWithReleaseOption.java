@@ -24,6 +24,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -40,7 +41,6 @@ import org.eclipse.jdt.internal.compiler.env.IModule;
 import org.eclipse.jdt.internal.compiler.env.NameEnvironmentAnswer;
 import org.eclipse.jdt.internal.compiler.util.CtSym;
 import org.eclipse.jdt.internal.compiler.util.JRTUtil;
-import org.eclipse.jdt.internal.compiler.util.SimpleSet;
 import org.eclipse.jdt.internal.compiler.util.SuffixConstants;
 import org.eclipse.jdt.internal.core.util.Util;
 
@@ -124,21 +124,21 @@ public class ClasspathJrtWithReleaseOption extends ClasspathJrt {
 		}
 	}
 
-	HashMap<String, SimpleSet> findPackagesInModules() {
+	HashMap<String, HashSet<String>> findPackagesInModules() {
 		// In JDK 11 and before, classes are not listed under their respective modules
 		// Hence, we simply go to the default module system for package-module mapping
 		if (this.fs == null || !this.ctSym.isJRE12Plus()) {
 			return ClasspathJrt.findPackagesInModules(this);
 		}
-		HashMap<String, SimpleSet> cache = PackageCache.get(this.modPathString);
+		HashMap<String, HashSet<String>> cache = PackageCache.get(this.modPathString);
 		if (cache != null) {
 			return cache;
 		}
-		final HashMap<String, SimpleSet> packagesInModule = new HashMap<>();
+		final HashMap<String, HashSet<String>> packagesInModule = new HashMap<>();
 		PackageCache.put(this.modPathString, packagesInModule);
 		try {
 			JRTUtil.walkModuleImage(this.jrtFile, this.release, new JRTUtil.JrtFileVisitor<Path>() {
-						SimpleSet packageSet = null;
+				HashSet<String> packageSet = null;
 
 						@Override
 						public FileVisitResult visitPackage(Path dir, Path mod, BasicFileAttributes attrs)
@@ -155,7 +155,7 @@ public class ClasspathJrtWithReleaseOption extends ClasspathJrt {
 
 						@Override
 						public FileVisitResult visitModule(Path path, String name) throws IOException {
-							this.packageSet = new SimpleSet(41);
+							this.packageSet = new HashSet<String>(41);
 							this.packageSet.add(""); //$NON-NLS-1$
 							if (name.endsWith("/")) { //$NON-NLS-1$
 								name = name.substring(0, name.length() - 1);
@@ -270,7 +270,7 @@ public class ClasspathJrtWithReleaseOption extends ClasspathJrt {
 
 	@Override
 	public Collection<String> getModuleNames(Collection<String> limitModules) {
-		HashMap<String, SimpleSet> cache = findPackagesInModules();
+		HashMap<String, HashSet<String>> cache = findPackagesInModules();
 		if (cache != null)
 			return selectModules(cache.keySet(), limitModules);
 		return Collections.emptyList();

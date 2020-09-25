@@ -15,6 +15,7 @@ package org.eclipse.jdt.internal.core.builder;
 
 import java.io.IOException;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -28,7 +29,6 @@ import org.eclipse.jdt.internal.compiler.env.AccessRuleSet;
 import org.eclipse.jdt.internal.compiler.env.IBinaryType;
 import org.eclipse.jdt.internal.compiler.env.IModule;
 import org.eclipse.jdt.internal.compiler.env.NameEnvironmentAnswer;
-import org.eclipse.jdt.internal.compiler.util.SimpleSet;
 import org.eclipse.jdt.internal.compiler.util.SuffixConstants;
 
 public class ClasspathJMod extends ClasspathJar {
@@ -106,7 +106,7 @@ public class ClasspathJMod extends ClasspathJar {
 		return null;
 	}
 	@Override
-	protected String readJarContent(final SimpleSet packageSet) {
+	protected String readJarContent(final HashSet<String> packageSet) {
 		String modInfo = null;
 		for (Enumeration<? extends ZipEntry> e = this.zipFile.entries(); e.hasMoreElements(); ) {
 			ZipEntry entry = e.nextElement();

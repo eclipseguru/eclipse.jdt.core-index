@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core.search.matching;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -26,9 +27,8 @@ import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.internal.compiler.env.NameEnvironmentAnswer;
 import org.eclipse.jdt.internal.compiler.env.IModulePathEntry;
-import org.eclipse.jdt.internal.compiler.util.SimpleLookupTable;
+import org.eclipse.jdt.internal.compiler.env.NameEnvironmentAnswer;
 import org.eclipse.jdt.internal.core.JavaModelManager;
 import org.eclipse.jdt.internal.core.builder.ClasspathLocation;
 import org.eclipse.jdt.internal.core.util.ResourceCompilationUnit;
@@ -37,14 +37,14 @@ import org.eclipse.jdt.internal.core.util.Util;
 public class ClasspathSourceDirectory extends ClasspathLocation implements IModulePathEntry {
 
 	IContainer sourceFolder;
-	SimpleLookupTable directoryCache;
-	SimpleLookupTable missingPackageHolder = new SimpleLookupTable();
+	HashMap<String, HashMap<String, IResource>> directoryCache;
+	final HashMap<String, IResource> missingPackageHolder = new HashMap<>(1);
 	char[][] fullExclusionPatternChars;
 	char[][] fulInclusionPatternChars;
 
 ClasspathSourceDirectory(IContainer sourceFolder, char[][] fullExclusionPatternChars, char[][] fulInclusionPatternChars) {
 	this.sourceFolder = sourceFolder;
-	this.directoryCache = new SimpleLookupTable(5);
+	this.directoryCache = new HashMap<>(5);
 	this.fullExclusionPatternChars = fullExclusionPatternChars;
 	this.fulInclusionPatternChars = fulInclusionPatternChars;
 }
@@ -54,8 +54,8 @@ public void cleanup() {
 	this.directoryCache = null;
 }
 
-SimpleLookupTable directoryTable(String qualifiedPackageName) {
-	SimpleLookupTable dirTable = (SimpleLookupTable) this.directoryCache.get(qualifiedPackageName);
+HashMap<String, IResource> directoryTable(String qualifiedPackageName) {
+	HashMap<String, IResource> dirTable =  this.directoryCache.get(qualifiedPackageName);
 	if (dirTable == this.missingPackageHolder) return null; // package exists in another classpath directory or jar
 	if (dirTable != null) return dirTable;
 
@@ -63,7 +63,7 @@ SimpleLookupTable directoryTable(String qualifiedPackageName) {
 		IResource container = this.sourceFolder.findMember(qualifiedPackageName); // this is a case-sensitive check
 		if (container instanceof IContainer) {
 			IResource[] members = ((IContainer) container).members();
-			dirTable = new SimpleLookupTable();
+			dirTable = new HashMap<>();
 			for (int i = 0, l = members.length; i < l; i++) {
 				IResource m = members[i];
 				String name;
@@ -118,8 +118,8 @@ public NameEnvironmentAnswer findClass(String typeName, String qualifiedPackageN
 }
 @Override
 public NameEnvironmentAnswer findClass(String sourceFileWithoutExtension, String qualifiedPackageName, String moduleName, String qualifiedSourceFileWithoutExtension) {
-	SimpleLookupTable dirTable = directoryTable(qualifiedPackageName);
-	if (dirTable != null && dirTable.elementSize > 0) {
+	HashMap<String, IResource> dirTable = directoryTable(qualifiedPackageName);
+	if (dirTable != null && dirTable.size() > 0) {
 		IFile file = (IFile) dirTable.get(sourceFileWithoutExtension);
 		if (file != null) {
 			return new NameEnvironmentAnswer(new ResourceCompilationUnit(file,
@@ -149,15 +149,13 @@ public boolean isPackage(String qualifiedPackageName, String moduleName) {
 }
 @Override
 public boolean hasCompilationUnit(String qualifiedPackageName, String moduleName) {
-	SimpleLookupTable dirTable = directoryTable(qualifiedPackageName);
-	if (dirTable != null && dirTable.elementSize > 0)
-		return true;
-	return false;
+	HashMap<String, IResource> dirTable = directoryTable(qualifiedPackageName);
+	return dirTable != null && dirTable.size() > 0;
 }
 
 @Override
 public void reset() {
-	this.directoryCache = new SimpleLookupTable(5);
+	this.directoryCache = new HashMap<>(5);
 }
 
 @Override

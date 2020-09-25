@@ -15,16 +15,28 @@
 package org.eclipse.jdt.internal.core.search;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.Set;
+
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.jdt.core.*;
+import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaModel;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.ITypeHierarchy;
+import org.eclipse.jdt.core.ITypeRoot;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.search.IJavaSearchScope;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.internal.compiler.util.ObjectVector;
-import org.eclipse.jdt.internal.compiler.util.SimpleSet;
 import org.eclipse.jdt.internal.core.JarPackageFragmentRoot;
 import org.eclipse.jdt.internal.core.JavaModel;
 import org.eclipse.jdt.internal.core.JavaModelManager;
@@ -69,8 +81,8 @@ public static int canSeeFocus(SearchPattern pattern, IPath projectOrJarPath) {
 	try {
 		IJavaModel model = JavaModelManager.getJavaModelManager().getJavaModel();
 		IJavaProject project = getJavaProject(projectOrJarPath, model);
-		IJavaElement[] focuses = getFocusedElementsAndTypes(pattern, project, null);
-		if (focuses.length == 0) return PROJECT_CAN_NOT_SEE_FOCUS;
+		Set<IJavaElement> focuses = getFocusedElementsAndTypes(pattern, project, null);
+		if (focuses.isEmpty()) return PROJECT_CAN_NOT_SEE_FOCUS;
 		if (project != null) {
 			return canSeeFocus(focuses, (JavaProject) project, null);
 		}
@@ -95,11 +107,10 @@ public static int canSeeFocus(SearchPattern pattern, IPath projectOrJarPath) {
 		return PROJECT_CAN_NOT_SEE_FOCUS;
 	}
 }
-private static int canSeeFocus(IJavaElement[] focuses, JavaProject javaProject, char[][][] focusQualifiedNames) {
+private static int canSeeFocus(Set<IJavaElement> focuses, JavaProject javaProject, char[][][] focusQualifiedNames) {
 	int result = PROJECT_CAN_NOT_SEE_FOCUS;
-	int length = focuses.length;
-	for (int i=0; i<length; i++) {
-		int canSeeFocus = canSeeFocus(focuses[i], javaProject, focusQualifiedNames);
+	for (IJavaElement focus : focuses) {
+		int canSeeFocus = canSeeFocus(focus, javaProject, focusQualifiedNames);
 		if (canSeeFocus == PROJECT_CAN_SEE_FOCUS)
 			return PROJECT_CAN_SEE_FOCUS;
 		if (canSeeFocus == PROJECT_SOURCE_CAN_NOT_SEE_FOCUS)
@@ -154,7 +165,7 @@ private static int canSeeFocus(IJavaElement focus, JavaProject javaProject, char
 /*
  * Create the list of focused jars or projects.
  */
-private static IJavaElement[] getFocusedElementsAndTypes(SearchPattern pattern, IJavaElement focusElement, ObjectVector superTypes) throws JavaModelException {
+private static Set<IJavaElement> getFocusedElementsAndTypes(SearchPattern pattern, IJavaElement focusElement, ObjectVector superTypes) throws JavaModelException {
 	if (pattern instanceof MethodPattern) {
 		// For method pattern, it needs to walk along the focus type super hierarchy
 		// and add jars/projects of all the encountered types.
@@ -165,7 +176,7 @@ private static IJavaElement[] getFocusedElementsAndTypes(SearchPattern pattern, 
 		ITypeHierarchy superHierarchy = type.newSupertypeHierarchy(null);
 		IType[] allTypes = superHierarchy.getAllSupertypes(type);
 		int length = allTypes.length;
-		SimpleSet focusSet = new SimpleSet(length+1);
+		HashSet<IJavaElement> focusSet = new HashSet(length+1);
 		if (focusElement != null) focusSet.add(focusElement);
 		for (int i=0; i<length; i++) {
 			IMethod[] methods = allTypes[i].getMethods();
@@ -180,19 +191,10 @@ private static IJavaElement[] getFocusedElementsAndTypes(SearchPattern pattern, 
 				}
 			}
 		}
-		// Rebuilt a contiguous array
-		IJavaElement[] focuses = new IJavaElement[focusSet.elementSize];
-		Object[] values = focusSet.values;
-		int count = 0;
-		for (int i = values.length; --i >= 0;) {
-			if (values[i] != null) {
-				focuses[count++] = (IJavaElement) values[i];
-			}
-		}
-		return focuses;
+		return focusSet;
 	}
-	if (focusElement == null) return new IJavaElement[0];
-	return new IJavaElement[] { focusElement };
+	if (focusElement == null) return Collections.emptySet();
+	return Set.of(focusElement);
 }
 
 /*
@@ -219,11 +221,11 @@ private void initializeIndexLocations() {
 			// find the projects from projectsAndJars that see the focus then walk those projects looking for the jars from projectsAndJars
 			int length = projectsAndJars.length;
 			JavaProject[] projectsCanSeeFocus = new JavaProject[length];
-			SimpleSet visitedProjects = new SimpleSet(length);
+			HashSet<JavaProject> visitedProjects = new HashSet<>(length);
 			int projectIndex = 0;
-			SimpleSet externalLibsToCheck = new SimpleSet(length);
+			HashSet<IPath> externalLibsToCheck = new HashSet<>(length);
 			ObjectVector superTypes = new ObjectVector();
-			IJavaElement[] focuses = getFocusedElementsAndTypes(this.pattern, focus, superTypes);
+			Set<IJavaElement> focuses = getFocusedElementsAndTypes(this.pattern, focus, superTypes);
 			char[][][] focusQualifiedNames = null;
 			boolean isAutoBuilding = ResourcesPlugin.getWorkspace().getDescription().isAutoBuilding();
 			if (isAutoBuilding && focus instanceof IJavaProject) {
@@ -246,13 +248,13 @@ private void initializeIndexLocations() {
 					externalLibsToCheck.add(path);
 				}
 			}
-			for (int i = 0; i < projectIndex && externalLibsToCheck.elementSize > 0; i++) {
+			for (int i = 0; i < projectIndex && externalLibsToCheck.size() > 0; i++) {
 				IClasspathEntry[] entries = projectsCanSeeFocus[i].getResolvedClasspath();
 				for (int j = entries.length; --j >= 0;) {
 					IClasspathEntry entry = entries[j];
 					if (entry.getEntryKind() == IClasspathEntry.CPE_LIBRARY) {
 						IPath path = entry.getPath();
-						if (externalLibsToCheck.remove(path) != null) {
+						if (externalLibsToCheck.remove(path)) {
 							Object target = JavaModel.getTarget(path, false/*don't check existence*/);
 							if (target instanceof IFolder) // case of an external folder
 								path = ((IFolder) target).getFullPath();
@@ -262,17 +264,17 @@ private void initializeIndexLocations() {
 				}
 			}
 			// jar files can be included in the search scope without including one of the projects that references them, so scan all projects that have not been visited
-			if (externalLibsToCheck.elementSize > 0) {
+			if (externalLibsToCheck.size() > 0) {
 				IJavaProject[] allProjects = model.getJavaProjects();
-				for (int i = 0, l = allProjects.length; i < l && externalLibsToCheck.elementSize > 0; i++) {
+				for (int i = 0, l = allProjects.length; i < l && externalLibsToCheck.size() > 0; i++) {
 					JavaProject project = (JavaProject) allProjects[i];
-					if (!visitedProjects.includes(project)) {
+					if (!visitedProjects.contains(project)) {
 						IClasspathEntry[] entries = project.getResolvedClasspath();
 						for (int j = entries.length; --j >= 0;) {
 							IClasspathEntry entry = entries[j];
 							if (entry.getEntryKind() == IClasspathEntry.CPE_LIBRARY) {
 								IPath path = entry.getPath();
-								if (externalLibsToCheck.remove(path) != null) {
+								if (externalLibsToCheck.remove(path)) {
 									Object target = JavaModel.getTarget(path, false/*don't check existence*/);
 									if (target instanceof IFolder) // case of an external folder
 										path = ((IFolder) target).getFullPath();
