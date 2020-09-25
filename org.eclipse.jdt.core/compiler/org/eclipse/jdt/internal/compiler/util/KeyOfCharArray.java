@@ -33,6 +33,9 @@ public class KeyOfCharArray implements Comparable<KeyOfCharArray>{
 		return Arrays.equals(this.key, other.key);
 	}
 
+	/**
+	 * @return <code>Arrays.toString</code> of the underlying array
+	 */
 	@Override
 	public int hashCode() {
 		return Arrays.hashCode(this.key);

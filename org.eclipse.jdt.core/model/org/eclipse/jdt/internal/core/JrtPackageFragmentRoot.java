@@ -33,7 +33,7 @@ import org.eclipse.jdt.internal.compiler.env.IModule;
 import org.eclipse.jdt.internal.compiler.env.IModulePathEntry;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.util.JRTUtil;
-import org.eclipse.jdt.internal.core.util.HashtableOfArrayToObject;
+import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject;
 import org.eclipse.jdt.internal.core.util.Util;
 
 /**
@@ -59,7 +59,7 @@ public class JrtPackageFragmentRoot extends JarPackageFragmentRoot implements IM
 
 	@Override
 	protected boolean computeChildren(OpenableElementInfo info, IResource underlyingResource) throws JavaModelException {
-		final HashtableOfArrayToObject rawPackageInfo = new HashtableOfArrayToObject();
+		final HashtableOfStringArrayToObject rawPackageInfo = new HashtableOfStringArrayToObject();
 		final String compliance = CompilerOptions.VERSION_1_8; // TODO: Java 9 Revisit
 
 		// always create the default package

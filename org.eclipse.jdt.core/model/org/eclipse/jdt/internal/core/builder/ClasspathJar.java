@@ -75,6 +75,7 @@ protected static void addToPackageSet(SimpleSet packageSet, String fileName, boo
 			return; // already existed
 		last = packageName.lastIndexOf('/');
 	}
+
 }
 
 /**

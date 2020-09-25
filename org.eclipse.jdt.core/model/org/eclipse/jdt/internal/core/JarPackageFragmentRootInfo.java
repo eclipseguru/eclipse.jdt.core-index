@@ -15,14 +15,14 @@ package org.eclipse.jdt.internal.core;
 
 import java.util.Map;
 
-import org.eclipse.jdt.internal.core.util.HashtableOfArrayToObject;
+import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject;
 
 /**
  * The element info for <code>JarPackageFragmentRoot</code>s.
  */
 class JarPackageFragmentRootInfo extends PackageFragmentRootInfo {
 	// a map from package name (String[]) to a size-2 array of Array<String>, the first element being the .class file names, and the second element being the non-Java resource names
-	HashtableOfArrayToObject rawPackageInfo;
+	HashtableOfStringArrayToObject rawPackageInfo;
 	Map<String, String> overriddenClasses;
 
 }

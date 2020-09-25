@@ -48,7 +48,8 @@ import org.eclipse.jdt.internal.core.nd.java.JavaIndex;
 import org.eclipse.jdt.internal.core.nd.java.NdResourceFile;
 import org.eclipse.jdt.internal.core.nd.java.NdType;
 import org.eclipse.jdt.internal.core.nd.java.NdZipEntry;
-import org.eclipse.jdt.internal.core.util.HashtableOfArrayToObject;
+import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject;
+import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject.KeyOfStringArray;
 import org.eclipse.jdt.internal.core.util.Util;
 
 /**
@@ -119,7 +120,7 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 	 */
 	@Override
 	protected boolean computeChildren(OpenableElementInfo info, IResource underlyingResource) throws JavaModelException {
-		final HashtableOfArrayToObject rawPackageInfo = new HashtableOfArrayToObject();
+		final HashtableOfStringArrayToObject<ArrayList[]> rawPackageInfo = new HashtableOfStringArrayToObject<>();
 		final Map<String, String> overridden = new HashMap<>();
 		IJavaElement[] children = NO_ELEMENTS;
 		try {
@@ -205,13 +206,7 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 			}
 			// loop through all of referenced packages, creating package fragments if necessary
 			// and cache the entry names in the rawPackageInfo table
-			children = new IJavaElement[rawPackageInfo.size()];
-			int index = 0;
-			for (int i = 0, length = rawPackageInfo.keyTable.length; i < length; i++) {
-				String[] pkgName = (String[]) rawPackageInfo.keyTable[i];
-				if (pkgName == null) continue;
-				children[index++] = getPackageFragment(pkgName);
-			}
+			children = createChildren(rawPackageInfo);
 		} catch (CoreException e) {
 			if (e.getCause() instanceof ZipException) {
 				// not a ZIP archive, leave the children empty
@@ -228,16 +223,14 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 		((JarPackageFragmentRootInfo) info).overriddenClasses = overridden;
 		return true;
 	}
-	protected IJavaElement[] createChildren(final HashtableOfArrayToObject rawPackageInfo) {
+	protected IJavaElement[] createChildren(final HashtableOfStringArrayToObject<ArrayList[]> rawPackageInfo) {
 		IJavaElement[] children;
 		// loop through all of referenced packages, creating package fragments if necessary
 		// and cache the entry names in the rawPackageInfo table
 		children = new IJavaElement[rawPackageInfo.size()];
 		int index = 0;
-		for (int i = 0, length = rawPackageInfo.keyTable.length; i < length; i++) {
-			String[] pkgName = (String[]) rawPackageInfo.keyTable[i];
-			if (pkgName == null) continue;
-			children[index++] = getPackageFragment(pkgName);
+		for (KeyOfStringArray pkgNameKey : rawPackageInfo.keySet()) {
+			children[index++] = getPackageFragment(pkgNameKey.getObjectArray());
 		}
 		return children;
 	}
@@ -380,7 +373,7 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 	public int hashCode() {
 		return this.jarPath.hashCode() + Arrays.hashCode(this.extraAttributes);
 	}
-	protected void initRawPackageInfo(HashtableOfArrayToObject rawPackageInfo, String entryName, boolean isDirectory, String compliance) {
+	protected void initRawPackageInfo(HashtableOfStringArrayToObject<ArrayList[]> rawPackageInfo, String entryName, boolean isDirectory, String compliance) {
 		int lastSeparator;
 		if (isDirectory) {
 			if (entryName.charAt(entryName.length() - 1) == '/') {
@@ -392,36 +385,62 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 			lastSeparator = entryName.lastIndexOf('/');
 		}
 		String[] pkgName = Util.splitOn('/', entryName, 0, lastSeparator);
-		String[] existing = null;
-		int length = pkgName.length;
-		int existingLength = length;
-		while (existingLength >= 0) {
-			existing = (String[]) rawPackageInfo.getKey(pkgName, existingLength);
-			if (existing != null) break;
-			existingLength--;
-		}
-		JavaModelManager manager = JavaModelManager.getJavaModelManager();
-		for (int i = existingLength; i < length; i++) {
-			// sourceLevel must be null because we know nothing about it based on a jar file
-			if (Util.isValidFolderNameForPackage(pkgName[i], null, compliance)) {
-				System.arraycopy(existing, 0, existing = new String[i+1], 0, i);
-				existing[i] = manager.intern(pkgName[i]);
-				rawPackageInfo.put(existing, new ArrayList[] { EMPTY_LIST, EMPTY_LIST });
-			} else {
-				// non-Java resource folder
-				if (!isDirectory) {
-					ArrayList[] children = (ArrayList[]) rawPackageInfo.get(existing);
-					if (children[1/*NON_JAVA*/] == EMPTY_LIST) children[1/*NON_JAVA*/] = new ArrayList();
-					children[1/*NON_JAVA*/].add(entryName);
-				}
-				return;
+
+		ArrayList[] children = rawPackageInfo.get(pkgName);
+		// initialize any missing entry
+		if(children == null) {
+			// memory optimization: when storing things in HashtableOfArrayToObject we want to intern keys
+			// (this is actually unnecessary with -XX:+UseG1GC -XX:+UseStringDeduplication)
+			// (this also only needs to happen when we know there is no existing entry in the map for pkgName)
+			JavaModelManager manager = JavaModelManager.getJavaModelManager();
+			for (int i = 0; i < pkgName.length; i++) {
+				pkgName[i] = manager.intern(pkgName[i]);
 			}
+
+			// find the nearest existing parent
+			String[] existingPkgName = null;
+			ArrayList[] existingPkgInfo = null;
+			for (int existingLength = pkgName.length-1; existingLength >= 0; existingLength--) {
+				existingPkgName = new String[existingLength];
+				System.arraycopy(pkgName, 0, existingPkgName, 0, existingLength);
+				existingPkgInfo = rawPackageInfo.get(existingPkgName);
+				if(existingPkgInfo != null) {
+					break;
+				}
+			}
+
+			// now create all entries which are missing
+			for (int i = existingPkgName != null ? existingPkgName.length : 0; i < pkgName.length; i++) {
+				// but only if they are valid folder names
+				// sourceLevel must be null because we know nothing about it based on a jar file
+				if (Util.isValidFolderNameForPackage(pkgName[i], null, compliance)) {
+					// we are lazy: instead of creating yet another package name and info array we re-use existingPkgName and existingPkgInfo
+					// this ensures they always point to the "nearest" parent
+					System.arraycopy(pkgName, 0, existingPkgName = new String[i+1], 0, i+1);
+					rawPackageInfo.put(existingPkgName, existingPkgInfo = new ArrayList[] { EMPTY_LIST, EMPTY_LIST });
+				} else {
+					// non-Java resource folder
+					if (!isDirectory) {
+						assert existingPkgInfo != null : "There must be a parent at this point. Otherwise the for loop and logic above is broken"; //$NON-NLS-1$
+						if (existingPkgInfo[1/*NON_JAVA*/] == EMPTY_LIST) existingPkgInfo[1/*NON_JAVA*/] = new ArrayList();
+						existingPkgInfo[1/*NON_JAVA*/].add(entryName);
+					}
+					// abort
+					return;
+				}
+			}
+
+			// at this point we are done creating all the missing entries
+			assert existingPkgName.length == pkgName.length && existingPkgInfo != null : "The logic above should have created all entries including the one for pkgName"; //$NON-NLS-1$
+			children = existingPkgInfo;
 		}
+
+		// we are done in case of a directory
 		if (isDirectory)
 			return;
 
 		// add classfile info amongst children
-		ArrayList[] children = (ArrayList[]) rawPackageInfo.get(pkgName);
+
 		if (org.eclipse.jdt.internal.compiler.util.Util.isClassFileName(entryName)) {
 			if (children[0/*JAVA*/] == EMPTY_LIST) children[0/*JAVA*/] = new ArrayList();
 			String nameWithoutExtension = entryName.substring(lastSeparator + 1, entryName.length() - 6);

@@ -31,7 +31,7 @@ import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.core.Openable;
 import org.eclipse.jdt.internal.core.PackageFragmentRoot;
 import org.eclipse.jdt.internal.core.util.HandleFactory;
-import org.eclipse.jdt.internal.core.util.HashtableOfArrayToObject;
+import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject;
 
 /**
  * Parent class for Type and Method NameMatchRequestor classes
@@ -49,7 +49,7 @@ public abstract class NameMatchRequestorWrapper {
 	/**
 	 * Cache package handles to optimize memory.
 	 */
-	private HashtableOfArrayToObject packageHandles;
+	private HashtableOfStringArrayToObject packageHandles;
 	private Object lastProject;
 	private long complianceValue;
 
@@ -106,7 +106,7 @@ private IType createTypeFromJar(String resourcePath, int separatorIndex) throws 
 		if (root == null) return null;
 		this.lastPkgFragmentRootPath= jarPath;
 		this.lastPkgFragmentRoot= root;
-		this.packageHandles= new HashtableOfArrayToObject(5);
+		this.packageHandles= new HashtableOfStringArrayToObject(5);
 	}
 	// create handle
 	String classFilePath= resourcePath.substring(separatorIndex + 1);
@@ -153,7 +153,7 @@ private IType createTypeFromPath(String resourcePath, String simpleTypeName, cha
 		if (root == null) return null;
 		this.lastPkgFragmentRoot = root;
 		this.lastPkgFragmentRootPath = root.internalPath().toString();
-		this.packageHandles = new HashtableOfArrayToObject(5);
+		this.packageHandles = new HashtableOfStringArrayToObject(5);
 	}
 	// create handle
 	resourcePath = resourcePath.substring(this.lastPkgFragmentRootPath.length() + 1);

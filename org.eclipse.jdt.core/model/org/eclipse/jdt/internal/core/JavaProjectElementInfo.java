@@ -29,7 +29,7 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.core.DeltaProcessor.RootInfo;
 import org.eclipse.jdt.internal.core.util.HashSetOfArray;
-import org.eclipse.jdt.internal.core.util.HashtableOfArrayToObject;
+import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject;
 import org.eclipse.jdt.internal.core.util.Util;
 
 /**
@@ -64,7 +64,7 @@ class JavaProjectElementInfo extends OpenableElementInfo {
 		 * A cache of all package fragments in this project.
 		 * (a map from String[] (the package name) to IPackageFragmentRoot[] (the package fragment roots that contain a package fragment with this name))
 		 */
-		public HashtableOfArrayToObject allPkgFragmentsCache;
+		public HashtableOfStringArrayToObject<Object> allPkgFragmentsCache;
 
 		/*
 		 * A cache of package fragments for each package fragment root of this project
@@ -82,10 +82,10 @@ class JavaProjectElementInfo extends OpenableElementInfo {
 	 * Adds the given name and its super names to the given set
 	 * (e.g. for {"a", "b", "c"}, adds {"a", "b", "c"}, {"a", "b"}, and {"a"})
 	 */
-	static void addSuperPackageNames(String[] pkgName, HashtableOfArrayToObject packageFragments) {
+	static void addSuperPackageNames(String[] pkgName, HashtableOfStringArrayToObject<Object> packageFragments) {
 		for (int i = pkgName.length-1; i > 0; i--) {
-			if (packageFragments.getKey(pkgName, i) == null) {
-				System.arraycopy(pkgName, 0, pkgName = new String[i], 0, i);
+			System.arraycopy(pkgName, 0, pkgName = new String[i], 0, i);
+			if (packageFragments.get(pkgName) == null) {
 				packageFragments.put(pkgName, NO_ROOTS);
 			}
 		}
@@ -309,12 +309,12 @@ class JavaProjectElementInfo extends OpenableElementInfo {
 	 */
 	NameLookup newNameLookup(JavaProject project, ICompilationUnit[] workingCopies, boolean excludeTestCode) {
 		ProjectCache cache = getProjectCache(project, excludeTestCode);
-		HashtableOfArrayToObject allPkgFragmentsCache = cache.allPkgFragmentsCache;
+		HashtableOfStringArrayToObject<Object> allPkgFragmentsCache = cache.allPkgFragmentsCache;
 		if (allPkgFragmentsCache == null) {
 			Map<IPath, RootInfo> rootInfos = JavaModelManager.getJavaModelManager().deltaState.roots;
 			IPackageFragmentRoot[] allRoots = cache.allPkgFragmentRootsCache;
 			int length = allRoots.length;
-			allPkgFragmentsCache = new HashtableOfArrayToObject();
+			allPkgFragmentsCache = new HashtableOfStringArrayToObject<>();
 			for (int i = 0; i < length; i++) {
 				IPackageFragmentRoot root = allRoots[i];
 				DeltaProcessor.RootInfo rootInfo = rootInfos.get(root.getPath());

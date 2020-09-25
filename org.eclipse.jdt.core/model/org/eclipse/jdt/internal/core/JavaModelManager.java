@@ -154,7 +154,7 @@ import org.eclipse.jdt.internal.core.search.JavaWorkspaceScope;
 import org.eclipse.jdt.internal.core.search.indexing.IndexManager;
 import org.eclipse.jdt.internal.core.search.processing.IJob;
 import org.eclipse.jdt.internal.core.search.processing.JobManager;
-import org.eclipse.jdt.internal.core.util.HashtableOfArrayToObject;
+import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject;
 import org.eclipse.jdt.internal.core.util.LRUCache;
 import org.eclipse.jdt.internal.core.util.Messages;
 import org.eclipse.jdt.internal.core.util.Util;
@@ -1158,7 +1158,7 @@ public class JavaModelManager implements ISaveParticipant, IContentTypeChangeLis
 		try {
 			JavaProjectElementInfo projectInfo = (JavaProjectElementInfo) getJavaModelManager().getInfo(project);
 			ProjectCache projectCache = projectInfo == null ? null : projectInfo.projectCache;
-			HashtableOfArrayToObject allPkgFragmentsCache = projectCache == null ? null : projectCache.allPkgFragmentsCache;
+			HashtableOfStringArrayToObject allPkgFragmentsCache = projectCache == null ? null : projectCache.allPkgFragmentsCache;
 			boolean isJavaLike = org.eclipse.jdt.internal.core.util.Util.isJavaLikeFileName(resourcePath.lastSegment());
 			IClasspathEntry[] entries = isJavaLike ? project.getRawClasspath() // JAVA file can only live inside SRC folder (on the raw path)
 					: ((JavaProject)project).getResolvedClasspath();
@@ -3369,6 +3369,12 @@ public class JavaModelManager implements ISaveParticipant, IContentTypeChangeLis
 
 	public synchronized char[] intern(char[] array) {
 		return this.charArraySymbols.add(array);
+	}
+
+	public void intern(String[] array) {
+		for (int i = 0; i < array.length; i++) {
+			array[i] = intern(array[i]);
+		}
 	}
 
 	public synchronized String intern(String s) {

@@ -15,10 +15,18 @@
 package org.eclipse.jdt.internal.core;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.function.Function;
 
-import org.eclipse.core.resources.*;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.IClasspathEntry;
@@ -47,7 +55,8 @@ import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
 import org.eclipse.jdt.internal.compiler.util.HashtableOfObjectToInt;
 import org.eclipse.jdt.internal.compiler.util.SuffixConstants;
 import org.eclipse.jdt.internal.core.AbstractModule.AutoModule;
-import org.eclipse.jdt.internal.core.util.HashtableOfArrayToObject;
+import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject;
+import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject.KeyOfStringArray;
 import org.eclipse.jdt.internal.core.util.Messages;
 import org.eclipse.jdt.internal.core.util.Util;
 
@@ -215,7 +224,7 @@ public class NameLookup implements SuffixConstants {
 	 * Note if the list is of size 1, then the IPackageFragmentRoot object
 	 * replaces the array.
 	 */
-	protected HashtableOfArrayToObject packageFragments;
+	protected HashtableOfStringArrayToObject<Object> packageFragments;
 
 	/**
 	 * Reverse map from root path to corresponding resolved CP entry
@@ -238,7 +247,7 @@ public class NameLookup implements SuffixConstants {
 
 	public NameLookup(
 			JavaProject rootProject, IPackageFragmentRoot[] packageFragmentRoots,
-			HashtableOfArrayToObject packageFragments,
+			HashtableOfStringArrayToObject packageFragments,
 			ICompilationUnit[] workingCopies,
 			Map rootToResolvedEntries) {
 		this.rootProject = rootProject;
@@ -256,11 +265,7 @@ public class NameLookup implements SuffixConstants {
 			this.packageFragments = packageFragments;
 		} else {
 			// clone tables as we're adding packages from working copies
-			try {
-				this.packageFragments = (HashtableOfArrayToObject) packageFragments.clone();
-			} catch (CloneNotSupportedException e1) {
-				// ignore (implementation of HashtableOfArrayToObject supports cloning)
-			}
+			this.packageFragments = (HashtableOfStringArrayToObject<Object>) packageFragments.clone();
 			this.typesInWorkingCopies = new HashMap();
 			HashtableOfObjectToInt rootPositions = new HashtableOfObjectToInt();
 			for (int i = 0, length = packageFragmentRoots.length; i < length; i++) {
@@ -449,11 +454,10 @@ public class NameLookup implements SuffixConstants {
 		if (index != -1) {
 			cuName= cuName.substring(0, index);
 		}
-		int pkgIndex = this.packageFragments.getIndex(pkgName);
-		if (pkgIndex != -1) {
-			Object value = this.packageFragments.valueTable[pkgIndex];
-			// reuse existing String[]
-			pkgName = (String[]) this.packageFragments.keyTable[pkgIndex];
+		Object value = this.packageFragments.get(pkgName);
+		if (value != null) {
+			// memory optimization: intern String[]
+			JavaModelManager.getJavaModelManager().intern(pkgName);
 			if (value instanceof PackageFragmentRoot) {
 				return findCompilationUnit(pkgName, cuName, (PackageFragmentRoot) value);
 			} else {
@@ -613,15 +617,14 @@ public class NameLookup implements SuffixConstants {
 			IPackageFragment[] oneFragment = null;
 			ArrayList pkgs = null;
 			char[] lowercaseName = hasPatternChars && !isStarPattern ? name.toLowerCase().toCharArray() : null;
-			Object[][] keys = this.packageFragments.keyTable;
-			for (int i = 0, length = keys.length; i < length; i++) {
-				String[] pkgName = (String[]) keys[i];
+			for (Entry<KeyOfStringArray, Object> entry : this.packageFragments.entrySet()) {
+				String[] pkgName = entry.getKey().getObjectArray();
 				if (pkgName != null) {
 					boolean match = isStarPattern || (hasPatternChars
 						? CharOperation.match(lowercaseName, Util.concatCompoundNameToCharArray(pkgName), false)
 						: Util.startsWithIgnoreCase(pkgName, splittedName, partialMatch));
 					if (match) {
-						Object value = this.packageFragments.valueTable[i];
+						Object value = entry.getValue();
 						if (value instanceof PackageFragmentRoot) {
 							IPackageFragment pkg = ((PackageFragmentRoot) value).getPackageFragment(pkgName);
 							if (oneFragment == null) {
@@ -659,19 +662,18 @@ public class NameLookup implements SuffixConstants {
 			return result;
 		} else {
 			String[] splittedName = Util.splitOn('.', name, 0, name.length());
-			int pkgIndex = this.packageFragments.getIndex(splittedName);
-			if (pkgIndex == -1)
+			Object value = this.packageFragments.get(splittedName);
+			if (value == null)
 				return null;
-			Object value = this.packageFragments.valueTable[pkgIndex];
-			// reuse existing String[]
-			String[] pkgName = (String[]) this.packageFragments.keyTable[pkgIndex];
+			// memory optimization: intern String[]
+			JavaModelManager.getJavaModelManager().intern(splittedName);
 			if (value instanceof PackageFragmentRoot) {
-				return new IPackageFragment[] {((PackageFragmentRoot) value).getPackageFragment(pkgName)};
+				return new IPackageFragment[] {((PackageFragmentRoot) value).getPackageFragment(splittedName)};
 			} else {
 				IPackageFragmentRoot[] roots = (IPackageFragmentRoot[]) value;
 				IPackageFragment[] result = new IPackageFragment[roots.length];
 				for (int i= 0; i < roots.length; i++) {
-					result[i] = ((PackageFragmentRoot) roots[i]).getPackageFragment(pkgName);
+					result[i] = ((PackageFragmentRoot) roots[i]).getPackageFragment(splittedName);
 				}
 				return result;
 			}
@@ -1185,18 +1187,14 @@ public class NameLookup implements SuffixConstants {
 	private void seekModuleAwarePartialPackageFragments(String name, IJavaElementRequestor requestor, IPackageFragmentRoot[] moduleContext) {
 		boolean allPrefixMatch = CharOperation.equals(name.toCharArray(), CharOperation.ALL_PREFIX);
 		String lName = name.toLowerCase();
-		Arrays.stream(this.packageFragments.keyTable)
-		.filter(k -> k != null)
-		.filter(k -> allPrefixMatch || Util.concatWith((String[])k, '.').toLowerCase().startsWith(lName))
+		this.packageFragments.keySet().parallelStream()
+		.filter(k -> allPrefixMatch || Util.concatWith(k.getObjectArray(), '.').toLowerCase().startsWith(lName))
 		.forEach(k -> {
-			checkModulePackages(requestor, moduleContext, this.packageFragments.getIndex(k));
+			checkModulePackages(requestor, moduleContext, k.getObjectArray(), this.packageFragments.get(k));
 		});
 	}
 
-	private void checkModulePackages(IJavaElementRequestor requestor, IPackageFragmentRoot[] moduleContext, int pkgIndex) {
-		Object value = this.packageFragments.valueTable[pkgIndex];
-		// reuse existing String[]
-		String[] pkgName = (String[]) this.packageFragments.keyTable[pkgIndex];
+	private void checkModulePackages(IJavaElementRequestor requestor, IPackageFragmentRoot[] moduleContext, String[] pkgName, Object value) {
 		if (value instanceof PackageFragmentRoot) {
 			PackageFragmentRoot root = (PackageFragmentRoot) value;
 			if (moduleMatches(root, moduleContext))
@@ -1238,13 +1236,12 @@ public class NameLookup implements SuffixConstants {
 */
 		if (partialMatch) {
 			String[] splittedName = Util.splitOn('.', name, 0, name.length());
-			Object[][] keys = this.packageFragments.keyTable;
-			for (int i = 0, length = keys.length; i < length; i++) {
+			for (Entry<KeyOfStringArray, Object> entry : this.packageFragments.entrySet()) {
+				String[] pkgName = entry.getKey().getObjectArray();
 				if (requestor.isCanceled())
 					return;
-				String[] pkgName = (String[]) keys[i];
 				if (pkgName != null && Util.startsWithIgnoreCase(pkgName, splittedName, partialMatch)) {
-					Object value = this.packageFragments.valueTable[i];
+					Object value = entry.getValue();
 					if (value instanceof PackageFragmentRoot) {
 						PackageFragmentRoot root = (PackageFragmentRoot) value;
 						requestor.acceptPackageFragment(root.getPackageFragment(pkgName));
@@ -1261,13 +1258,12 @@ public class NameLookup implements SuffixConstants {
 			}
 		} else {
 			String[] splittedName = Util.splitOn('.', name, 0, name.length());
-			int pkgIndex = this.packageFragments.getIndex(splittedName);
-			if (pkgIndex != -1) {
-				Object value = this.packageFragments.valueTable[pkgIndex];
-				// reuse existing String[]
-				String[] pkgName = (String[]) this.packageFragments.keyTable[pkgIndex];
+			Object value = this.packageFragments.get(splittedName);
+			if (value != null) {
+				// memory optimization: intern String[]
+				JavaModelManager.getJavaModelManager().intern(splittedName);
 				if (value instanceof PackageFragmentRoot) {
-					requestor.acceptPackageFragment(((PackageFragmentRoot) value).getPackageFragment(pkgName));
+					requestor.acceptPackageFragment(((PackageFragmentRoot) value).getPackageFragment(splittedName));
 				} else {
 					IPackageFragmentRoot[] roots = (IPackageFragmentRoot[]) value;
 					if (roots != null) {
@@ -1275,7 +1271,7 @@ public class NameLookup implements SuffixConstants {
 							if (requestor.isCanceled())
 								return;
 							PackageFragmentRoot root = (PackageFragmentRoot) roots[i];
-							requestor.acceptPackageFragment(root.getPackageFragment(pkgName));
+							requestor.acceptPackageFragment(root.getPackageFragment(splittedName));
 						}
 					}
 				}
