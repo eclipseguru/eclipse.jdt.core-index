@@ -41,6 +41,7 @@ package org.eclipse.jdt.internal.compiler.lookup;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1467,9 +1468,9 @@ public AccessRestriction getAccessRestriction(TypeBinding type) {
 public ReferenceBinding getCachedType(char[][] compoundName) {
 	ReferenceBinding result = getCachedType0(compoundName);
 	if (result == null && this.useModuleSystem) {
-		ModuleBinding[] modulesToSearch = this.module.isUnnamed() || this.module.isAuto
-				? this.root.knownModules.valueTable
-				: this.module.getAllRequiredModules();
+		Collection<ModuleBinding> modulesToSearch = this.module.isUnnamed() || this.module.isAuto
+				? this.root.knownModules.values()
+				: Arrays.asList(this.module.getAllRequiredModules());
 		for (ModuleBinding someModule : modulesToSearch) {
 			if (someModule == null) continue;
 			result = someModule.environment.getCachedType0(compoundName);

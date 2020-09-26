@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.apt.model;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -152,11 +153,11 @@ public class ElementsImpl9 extends ElementsImpl {
 	public Set<? extends ModuleElement> getAllModuleElements() {
 		LookupEnvironment lookup = _env.getLookupEnvironment();
 		HashtableOfModule knownModules = lookup.knownModules;
-		ModuleBinding[] modules = knownModules.valueTable;
-		if (modules == null || modules.length == 0) {
+		Collection<ModuleBinding> modules = knownModules.values();
+		if (modules == null || modules.size() == 0) {
 			return Collections.emptySet();
 		}
-		Set<ModuleElement> mods = new HashSet<>(modules.length);
+		Set<ModuleElement> mods = new HashSet<>(modules.size());
 		for (ModuleBinding moduleBinding : modules) {
 			if (moduleBinding == null)
 				continue;
