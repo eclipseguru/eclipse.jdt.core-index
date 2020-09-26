@@ -442,9 +442,9 @@ public void test023() throws JavaModelException {
 		"public class BasicTestTypes {\n" +
 		"}\n";
 	completeInJavadoc("/Completion/src/javadoc/types/tags/BasicTestTypes.java", source, true, "java.");
-	assertResults(
-		"java.lang[PACKAGE_REF]{java.lang, java.lang, null, null, null, "+this.positions+R_DRICQNR+"}\n" +
-		"java.io[PACKAGE_REF]{java.io, java.io, null, null, null, "+this.positions+R_DRICQNR+"}"
+	assertSortedResults(
+		"java.io[PACKAGE_REF]{java.io, java.io, null, null, null, "+this.positions+R_DRICQNR+"}\n" +
+		"java.lang[PACKAGE_REF]{java.lang, java.lang, null, null, null, "+this.positions+R_DRICQNR+"}"
 	);
 }
 
@@ -459,11 +459,11 @@ public void test024() throws JavaModelException {
 		"public class BasicTestTypes {\n" +
 		"}\n";
 	completeInJavadoc("/Completion/src/javadoc/types/tags/BasicTestTypes.java", source, true, "java.");
-	assertResults(
-		"java.util[PACKAGE_REF]{java.util, java.util, null, null, null, "+this.positions+R_DRICQNR+"}\n" +
-		"java.lang.annotation[PACKAGE_REF]{java.lang.annotation, java.lang.annotation, null, null, null, "+this.positions+R_DRICQNR+"}\n" +
+	assertSortedResults(
+		"java.io[PACKAGE_REF]{java.io, java.io, null, null, null, "+this.positions+R_DRICQNR+"}\n" +
 		"java.lang[PACKAGE_REF]{java.lang, java.lang, null, null, null, "+this.positions+R_DRICQNR+"}\n" +
-		"java.io[PACKAGE_REF]{java.io, java.io, null, null, null, "+this.positions+R_DRICQNR+"}"
+		"java.lang.annotation[PACKAGE_REF]{java.lang.annotation, java.lang.annotation, null, null, null, "+this.positions+R_DRICQNR+"}\n" +
+		"java.util[PACKAGE_REF]{java.util, java.util, null, null, null, "+this.positions+R_DRICQNR+"}"
 	);
 }
 
