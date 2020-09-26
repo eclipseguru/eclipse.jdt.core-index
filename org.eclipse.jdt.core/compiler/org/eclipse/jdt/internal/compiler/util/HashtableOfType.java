@@ -13,6 +13,8 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.util;
 
+import java.util.Arrays;
+
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
 
@@ -60,6 +62,8 @@ public ReferenceBinding get(char[] key) {
 		if (++index == length) {
 			index = 0;
 		}
+		System.err.print("Collision for " + Arrays.toString(key) + " in: " + this); //$NON-NLS-1$ //$NON-NLS-2$
+		Thread.dumpStack();
 	}
 	return null;
 }
@@ -79,6 +83,8 @@ public ReferenceBinding getput(char[] key, ReferenceBinding value) {
 		if (++index == length) {
 			index = 0;
 		}
+		System.err.print("Collision for " + Arrays.toString(key) + " in: " + this); //$NON-NLS-1$ //$NON-NLS-2$
+		Thread.dumpStack();
 	}
 	this.keyTable[index] = key;
 	this.valueTable[index] = value;
@@ -109,11 +115,18 @@ public ReferenceBinding put(char[] key, ReferenceBinding value) {
 	return value;
 }
 private void rehash() {
+	long start = System.currentTimeMillis();
+
 	HashtableOfType newHashtable = new HashtableOfType(this.elementSize < 100 ? 100 : this.elementSize * 2); // double the number of expected elements
 	char[] currentKey;
 	for (int i = this.keyTable.length; --i >= 0;)
 		if ((currentKey = this.keyTable[i]) != null)
 			newHashtable.put(currentKey, this.valueTable[i]);
+
+	long duration = System.currentTimeMillis() - start;
+	if(duration > 1) {
+		System.out.println(this.getClass().getSimpleName() + "#rehash "+this.elementSize+" --> " + newHashtable.elementSize + "  took " + duration + "ms"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+	}
 
 	this.keyTable = newHashtable.keyTable;
 	this.valueTable = newHashtable.valueTable;

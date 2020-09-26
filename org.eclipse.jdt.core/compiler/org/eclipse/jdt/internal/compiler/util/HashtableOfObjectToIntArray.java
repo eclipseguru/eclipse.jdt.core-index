@@ -80,6 +80,8 @@ public final class HashtableOfObjectToIntArray implements Cloneable {
 			if (++index == length) {
 				index = 0;
 			}
+			System.err.print("Collision for " + key + " in: " + this); //$NON-NLS-1$ //$NON-NLS-2$
+			Thread.dumpStack();
 		}
 		return null;
 	}
@@ -132,12 +134,18 @@ public final class HashtableOfObjectToIntArray implements Cloneable {
 	}
 
 	private void rehash() {
+		long start = System.currentTimeMillis();
 
 		HashtableOfObjectToIntArray newHashtable = new HashtableOfObjectToIntArray(this.elementSize * 2);		// double the number of expected elements
 		Object currentKey;
 		for (int i = this.keyTable.length; --i >= 0;)
 			if ((currentKey = this.keyTable[i]) != null)
 				newHashtable.put(currentKey, this.valueTable[i]);
+
+		long duration = System.currentTimeMillis() - start;
+		if(duration > 1) {
+			System.out.println(this.getClass().getSimpleName() + "#rehash "+this.elementSize+" --> " + newHashtable.elementSize + "  took " + duration + "ms"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+		}
 
 		this.keyTable = newHashtable.keyTable;
 		this.valueTable = newHashtable.valueTable;
