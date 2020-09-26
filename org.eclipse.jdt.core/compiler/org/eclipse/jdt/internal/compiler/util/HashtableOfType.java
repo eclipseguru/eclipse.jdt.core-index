@@ -13,135 +13,42 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.util;
 
-import java.util.Arrays;
+import java.util.HashMap;
 
-import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
 
-public final class HashtableOfType {
-	// to avoid using Enumerations, walk the individual tables skipping nulls
-	public char[] keyTable[];
-	public ReferenceBinding valueTable[];
+public final class HashtableOfType extends HashMap<KeyOfCharArray, ReferenceBinding>{
 
-	public int elementSize; // number of elements in the table
-	int threshold;
+	/** serialVersionUID */
+	private static final long serialVersionUID = 9128824057496562784L;
+
 public HashtableOfType() {
 	this(3);
 }
 public HashtableOfType(int size) {
-	this.elementSize = 0;
-	this.threshold = size; // size represents the expected number of elements
-	int extraRoom = (int) (size * 1.75f);
-	if (this.threshold == extraRoom)
-		extraRoom++;
-	this.keyTable = new char[extraRoom][];
-	this.valueTable = new ReferenceBinding[extraRoom];
+	super(size);
 }
 public boolean containsKey(char[] key) {
-	int length = this.keyTable.length,
-		index = CharOperation.hashCode(key) % length;
-	int keyLength = key.length;
-	char[] currentKey;
-	while ((currentKey = this.keyTable[index]) != null) {
-		if (currentKey.length == keyLength && CharOperation.equals(currentKey, key))
-			return true;
-		if (++index == length) {
-			index = 0;
-		}
-	}
-	return false;
+	return super.containsKey(new KeyOfCharArray(key));
 }
 public ReferenceBinding get(char[] key) {
-	int length = this.keyTable.length,
-		index = CharOperation.hashCode(key) % length;
-	int keyLength = key.length;
-	char[] currentKey;
-	while ((currentKey = this.keyTable[index]) != null) {
-		if (currentKey.length == keyLength && CharOperation.equals(currentKey, key))
-			return this.valueTable[index];
-		if (++index == length) {
-			index = 0;
-		}
-		System.err.print("Collision for " + Arrays.toString(key) + " in: " + this); //$NON-NLS-1$ //$NON-NLS-2$
-		Thread.dumpStack();
-	}
-	return null;
+	return super.get(new KeyOfCharArray(key));
 }
 // Returns old value.
 public ReferenceBinding getput(char[] key, ReferenceBinding value) {
-	ReferenceBinding retVal = null;
-	int length = this.keyTable.length,
-		index = CharOperation.hashCode(key) % length;
-	int keyLength = key.length;
-	char[] currentKey;
-	while ((currentKey = this.keyTable[index]) != null) {
-		if (currentKey.length == keyLength && CharOperation.equals(currentKey, key)) {
-			retVal = this.valueTable[index];
-			this.valueTable[index] = value;
-			return retVal;
-		}
-		if (++index == length) {
-			index = 0;
-		}
-		System.err.print("Collision for " + Arrays.toString(key) + " in: " + this); //$NON-NLS-1$ //$NON-NLS-2$
-		Thread.dumpStack();
-	}
-	this.keyTable[index] = key;
-	this.valueTable[index] = value;
-
-	// assumes the threshold is never equal to the size of the table
-	if (++this.elementSize > this.threshold)
-		rehash();
-	return retVal;
+	return super.put(new KeyOfCharArray(key), value);
 }
+//Returns new value.
 public ReferenceBinding put(char[] key, ReferenceBinding value) {
-	int length = this.keyTable.length,
-		index = CharOperation.hashCode(key) % length;
-	int keyLength = key.length;
-	char[] currentKey;
-	while ((currentKey = this.keyTable[index]) != null) {
-		if (currentKey.length == keyLength && CharOperation.equals(currentKey, key))
-			return this.valueTable[index] = value;
-		if (++index == length) {
-			index = 0;
-		}
-	}
-	this.keyTable[index] = key;
-	this.valueTable[index] = value;
-
-	// assumes the threshold is never equal to the size of the table
-	if (++this.elementSize > this.threshold)
-		rehash();
+    super.put(new KeyOfCharArray(key), value);
 	return value;
-}
-private void rehash() {
-	long start = System.currentTimeMillis();
-
-	HashtableOfType newHashtable = new HashtableOfType(this.elementSize < 100 ? 100 : this.elementSize * 2); // double the number of expected elements
-	char[] currentKey;
-	for (int i = this.keyTable.length; --i >= 0;)
-		if ((currentKey = this.keyTable[i]) != null)
-			newHashtable.put(currentKey, this.valueTable[i]);
-
-	long duration = System.currentTimeMillis() - start;
-	if(duration > 1) {
-		System.out.println(this.getClass().getSimpleName() + "#rehash "+this.elementSize+" --> " + newHashtable.elementSize + "  took " + duration + "ms"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
-	}
-
-	this.keyTable = newHashtable.keyTable;
-	this.valueTable = newHashtable.valueTable;
-	this.threshold = newHashtable.threshold;
-}
-public int size() {
-	return this.elementSize;
 }
 @Override
 public String toString() {
 	String s = ""; //$NON-NLS-1$
-	ReferenceBinding type;
-	for (int i = 0, length = this.valueTable.length; i < length; i++)
-		if ((type = this.valueTable[i]) != null)
+	for (ReferenceBinding type : values()) {
 			s += type.toString() + "\n"; //$NON-NLS-1$
+	}
 	return s;
 }
 }

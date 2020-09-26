@@ -743,7 +743,7 @@ public class ModuleBinding extends Binding implements IUpdatableModule {
 						}
 					}
 				}
-				buffer.append(this.requires[i].moduleName);
+				buffer.append(this.requires[i] != null ? this.requires[i].moduleName: ""); //$NON-NLS-1$
 			}
 		} else {
 			buffer.append("\nNo Requires"); //$NON-NLS-1$

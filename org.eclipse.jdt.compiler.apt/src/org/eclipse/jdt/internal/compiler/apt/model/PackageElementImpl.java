@@ -93,8 +93,7 @@ public class PackageElementImpl extends ElementImpl implements PackageElement {
 			}
 		}
 		if (binding.knownTypes != null) {
-			ReferenceBinding[] knownTypes = binding.knownTypes.valueTable;
-			for (ReferenceBinding referenceBinding : knownTypes) {
+			for (ReferenceBinding referenceBinding : binding.knownTypes.values()) {
 				if (referenceBinding != null && referenceBinding.isValidBinding() && referenceBinding.enclosingType() == null) {
 					if (!types.contains(referenceBinding)) {
 						Element newElement = _env.getFactory().newElement(referenceBinding);

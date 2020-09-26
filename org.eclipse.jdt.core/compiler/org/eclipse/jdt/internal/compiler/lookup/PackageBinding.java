@@ -477,10 +477,8 @@ public abstract PlainPackageBinding getIncarnation(ModuleBinding moduleBinding);
 
 public boolean hasCompilationUnit(boolean checkCUs) {
 	if (this.knownTypes != null) {
-		for (ReferenceBinding knownType : this.knownTypes.valueTable) {
-			if (knownType != null && knownType != LookupEnvironment.TheNotFoundType && !knownType.isUnresolvedType())
-				return true;
-		}
+		if(this.knownTypes.values().parallelStream().filter(knownType -> knownType != LookupEnvironment.TheNotFoundType && !knownType.isUnresolvedType()).findAny().isPresent())
+			return true;
 	}
 	if (this.environment.useModuleSystem) {
 		IModuleAwareNameEnvironment moduleEnv = (IModuleAwareNameEnvironment) this.environment.nameEnvironment;
