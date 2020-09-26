@@ -80,7 +80,7 @@ public final class HashtableOfObjectToIntArray implements Cloneable {
 			if (++index == length) {
 				index = 0;
 			}
-			System.err.print("Collision for " + key + " in: " + this); //$NON-NLS-1$ //$NON-NLS-2$
+			System.err.print("Collision for " + key); //$NON-NLS-1$
 			Thread.dumpStack();
 		}
 		return null;

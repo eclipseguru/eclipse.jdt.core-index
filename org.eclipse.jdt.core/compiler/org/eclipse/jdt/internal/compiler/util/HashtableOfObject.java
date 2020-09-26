@@ -94,7 +94,7 @@ public final class HashtableOfObject implements Cloneable {
 			if (++index == length) {
 				index = 0;
 			}
-			System.err.print("Collision for " + Arrays.toString(key) + " in: " + this); //$NON-NLS-1$ //$NON-NLS-2$
+			System.err.print("Collision for " + Arrays.toString(key)); //$NON-NLS-1$
 			Thread.dumpStack();
 		}
 		return null;
