@@ -310,7 +310,7 @@ protected void removeInfo(JavaElement element) {
 	}
 }
 protected void resetJarTypeCache() {
-	this.jarTypeCache = new LRUCache<>((int) (DEFAULT_OPENABLE_SIZE * getMemoryRatio() * getJarTypeRatio()));
+	this.jarTypeCache = new LRUCache<IJavaElement, Object>((int) (DEFAULT_OPENABLE_SIZE * getMemoryRatio() * getJarTypeRatio()), VERBOSE);
 }
 protected void removeFromJarTypeCache(BinaryType type) {
 	this.jarTypeCache.flush(type);

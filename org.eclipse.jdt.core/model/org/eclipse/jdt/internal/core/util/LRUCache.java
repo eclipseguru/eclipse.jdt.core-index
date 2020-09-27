@@ -14,6 +14,7 @@
 package org.eclipse.jdt.internal.core.util;
 
 import java.text.NumberFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
@@ -286,12 +287,14 @@ public class LRUCache<K, V> implements Cloneable {
 	 */
 	protected static final int DEFAULT_SPACELIMIT = 100;
 
+	protected final boolean verbose;
+
 	/**
 	 * Creates a new cache.  Size of cache is defined by
 	 * <code>DEFAULT_SPACELIMIT</code>.
 	 */
 	public LRUCache() {
-		this(DEFAULT_SPACELIMIT);
+		this(DEFAULT_SPACELIMIT, false);
 	}
 
 	/**
@@ -299,10 +302,20 @@ public class LRUCache<K, V> implements Cloneable {
 	 * @param size Size of Cache
 	 */
 	public LRUCache(int size) {
+		this(size, false);
+	}
+
+	/**
+	 * Creates a new cache.
+	 * @param size Size of Cache
+	 * @param verbose if <code>true</code> prints cache related events to System.out
+	 */
+	public LRUCache(int size, boolean verbose) {
 		this.timestampCounter = this.currentSpace = 0;
 		this.entryQueue = this.entryQueueTail = null;
 		this.entryTable = new HashMap<>(size);
 		this.spaceLimit = size;
+		this.verbose = verbose;
 	}
 
 	/**
@@ -445,8 +458,15 @@ public class LRUCache<K, V> implements Cloneable {
 		}
 
 		/* Free up space by removing oldest entries */
+		int removedEntries = 0;
 		while (this.currentSpace + space > limit && this.entryQueueTail != null) {
 			privateRemoveEntry (this.entryQueueTail, false);
+			++removedEntries;
+		}
+		if(this.verbose) {
+			System.out.println(Thread.currentThread() + " " + new Date(System.currentTimeMillis()).toString()); //$NON-NLS-1$
+			System.out.println(Thread.currentThread() + " REMOVED " + removedEntries + " entries from cache ("+ space + " space requested, " + NumberFormat.getInstance().format(fillingRatio()) + "% full)"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+			System.out.println();
 		}
 		return true;
 	}
@@ -573,6 +593,11 @@ public class LRUCache<K, V> implements Cloneable {
 		}
 		if (makeSpace(newSpace)) {
 			privateAdd (key, value, newSpace);
+		} else if (this.verbose && value != null) {
+			System.out.println(Thread.currentThread() + " " + new Date(System.currentTimeMillis()).toString()); //$NON-NLS-1$
+			System.out.println(Thread.currentThread() + " no space in cache for adding " + key + " of type '" + value.getClass().getSimpleName() + "' (" + NumberFormat.getInstance().format(fillingRatio()) + "% full)"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+			System.out.println();
+
 		}
 		return value;
 	}
