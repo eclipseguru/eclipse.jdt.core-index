@@ -71,17 +71,28 @@ public final class HashtableOfObjectToInt implements Cloneable {
 	}
 
 	public int get(Object key) {
-		int length = this.keyTable.length,
-			index = (key.hashCode()& 0x7FFFFFFF) % length;
-		Object currentKey;
-		while ((currentKey = this.keyTable[index]) != null) {
-			if (currentKey.equals(key))
-				return this.valueTable[index];
-			if (++index == length) {
-				index = 0;
+		long start = System.currentTimeMillis();
+		int rounds = 0;
+		try {
+			int length = this.keyTable.length,
+				index = (key.hashCode()& 0x7FFFFFFF) % length;
+			Object currentKey;
+			while ((currentKey = this.keyTable[index]) != null) {
+				if (currentKey.equals(key))
+					return this.valueTable[index];
+				if (++index == length) {
+					index = 0;
+				}
+				++rounds;
 			}
-			System.err.print("Collision for " + key); //$NON-NLS-1$
-			Thread.dumpStack();
+		} finally {
+			long duration = System.currentTimeMillis() - start;
+			if(duration > 1) {
+				System.out.println(this.getClass().getSimpleName() + "#get ["+key+"] --> rounds: " + rounds + "  took " + duration + "ms"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+				if(rounds > 4) {
+					Thread.dumpStack();
+				}
+			}
 		}
 		return -1;
 	}

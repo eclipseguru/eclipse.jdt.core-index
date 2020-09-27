@@ -13,8 +13,6 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.util;
 
-import java.util.Arrays;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 
 /**
@@ -78,18 +76,29 @@ public final class HashtableOfIntValues implements Cloneable {
 	}
 
 	public int get(char[] key) {
-		int length = this.keyTable.length,
-			index = CharOperation.hashCode(key) % length;
-		int keyLength = key.length;
-		char[] currentKey;
-		while ((currentKey = this.keyTable[index]) != null) {
-			if (currentKey.length == keyLength && CharOperation.equals(currentKey, key))
-				return this.valueTable[index];
-			if (++index == length) {
-				index = 0;
+		long start = System.currentTimeMillis();
+		int rounds = 0;
+		try {
+			int length = this.keyTable.length,
+				index = CharOperation.hashCode(key) % length;
+			int keyLength = key.length;
+			char[] currentKey;
+			while ((currentKey = this.keyTable[index]) != null) {
+				if (currentKey.length == keyLength && CharOperation.equals(currentKey, key))
+					return this.valueTable[index];
+				if (++index == length) {
+					index = 0;
+				}
+				++rounds;
 			}
-			System.err.print("Collision for " + Arrays.toString(key) + " in: " + this); //$NON-NLS-1$ //$NON-NLS-2$
-			Thread.dumpStack();
+		} finally {
+			long duration = System.currentTimeMillis() - start;
+			if(duration > 1) {
+				System.out.println(this.getClass().getSimpleName() + "#get ["+new String(key)+"] --> rounds: " + rounds + "  took " + duration + "ms"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+				if(rounds > 4) {
+					Thread.dumpStack();
+				}
+			}
 		}
 		return NO_VALUE;
 	}
