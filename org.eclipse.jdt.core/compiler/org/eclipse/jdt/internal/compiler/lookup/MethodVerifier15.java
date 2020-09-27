@@ -37,6 +37,7 @@ package org.eclipse.jdt.internal.compiler.lookup;
 
 
 import java.util.Arrays;
+import java.util.Map.Entry;
 
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
@@ -48,6 +49,7 @@ import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 import org.eclipse.jdt.internal.compiler.util.HashtableOfObject;
+import org.eclipse.jdt.internal.compiler.util.KeyOfCharArray;
 import org.eclipse.jdt.internal.compiler.util.SimpleSet;
 import org.eclipse.jdt.internal.compiler.util.Sorting;
 
@@ -442,10 +444,21 @@ void reportRawReferences() {
 	/* Code below is only for a method that does not override/implement a super type method. If it were to,
 	   it would have been handled in checkAgainstInheritedMethods.
 	*/
-	Object [] methodArray = this.currentMethods.valueTable;
-	for (int s = methodArray.length; --s >= 0;) {
-		if (methodArray[s] == null) continue;
-		MethodBinding[] current = (MethodBinding[]) methodArray[s];
+
+	/* According to old HashtableOfObject *keys* were processes in reverse order. It's unclear which order is supposed to be "reversed"
+	 * The old structure stored things in an array, with the position being computed based on the hashCode.
+	 *
+	 * As the key is a char[] its hashCode is pretty random of all its chars.
+	 * Processing in "reverse" order does not make any sense here.
+	 *
+	 * The old key order was neither insertion order nor some other form of sorting. Thus it's unclear what was reversed an why.
+	 * Hence, I removed the reverse ordering and just process the values as they are found in the map.
+	 * FIXME: Need someone from JDT team with context to confirm this is correct (or let's see which tests this breaks)
+	 *
+	 * If it turns out it matters, we probably need to look for an alternative to HashtableOfObject (or restore its behavior here)
+	 */
+	for (MethodBinding[] current : this.currentMethods.values()) {
+		if (current == null) continue;
 		for (int i = 0, length = current.length; i < length; i++) {
 			MethodBinding currentMethod = current[i];
 			if ((currentMethod.modifiers & (ExtraCompilerModifiers.AccImplementing | ExtraCompilerModifiers.AccOverriding)) == 0) {
@@ -526,11 +539,22 @@ void checkMethods() {
 	boolean mustImplementAbstractMethods = mustImplementAbstractMethods();
 	boolean skipInheritedMethods = mustImplementAbstractMethods && canSkipInheritedMethods(); // have a single concrete superclass so only check overridden methods
 	boolean isOrEnclosedByPrivateType = this.type.isOrEnclosedByPrivateType();
-	char[][] methodSelectors = this.inheritedMethods.keyTable;
-	nextSelector : for (int s = methodSelectors.length; --s >= 0;) {
-		if (methodSelectors[s] == null) continue nextSelector;
-		MethodBinding[] current = (MethodBinding[]) this.currentMethods.get(methodSelectors[s]);
-		MethodBinding[] inherited = (MethodBinding[]) this.inheritedMethods.valueTable[s];
+	/* According to old HashtableOfObject *keys* were processes in reverse order. It's unclear which order is supposed to be "reversed"
+	 * The old structure stored things in an array, with the position being computed based on the hashCode.
+	 *
+	 * As the key is a char[] its hashCode is pretty random of all its chars.
+	 * Processing in "reverse" order does not make any sense here.
+	 *
+	 * The old key order was neither insertion order nor some other form of sorting. Thus it's unclear what was reversed an why.
+	 * Hence, I removed the reverse ordering and just process the values as they are found in the map.
+	 * FIXME: Need someone from JDT team with context to confirm this is correct (or let's see which tests this breaks)
+	 *
+	 * If it turns out it matters, we probably need to look for an alternative to HashtableOfObject (or restore its behavior here)
+	 */
+	nextSelector : for (Entry<KeyOfCharArray, MethodBinding[]> inheritedEntry : this.inheritedMethods.entrySet()) {
+		MethodBinding[] current = this.currentMethods.get(inheritedEntry.getKey());
+		MethodBinding[] inherited = inheritedEntry.getValue();
+		if (inherited == null) continue nextSelector;
 		// ensure that if we have a concrete method this shows up at position [0]:
 		inherited = Sorting.concreteFirst(inherited, inherited.length);
 
@@ -746,10 +770,20 @@ MethodBinding findReplacedMethod(MethodBinding specific, MethodBinding general) 
 	return null;
 }
 void checkTypeVariableMethods(TypeParameter typeParameter) {
-	char[][] methodSelectors = this.inheritedMethods.keyTable;
-	nextSelector : for (int s = methodSelectors.length; --s >= 0;) {
-		if (methodSelectors[s] == null) continue nextSelector;
-		MethodBinding[] inherited = (MethodBinding[]) this.inheritedMethods.valueTable[s];
+	/* According to old HashtableOfObject *keys* were processes in reverse order. It's unclear which order is supposed to be "reversed"
+	 * The old structure stored things in an array, with the position being computed based on the hashCode.
+	 *
+	 * As the key is a char[] its hashCode is pretty random of all its chars.
+	 * Processing in "reverse" order does not make any sense here.
+	 *
+	 * The old key order was neither insertion order nor some other form of sorting. Thus it's unclear what was reversed an why.
+	 * Hence, I removed the reverse ordering and just process the values as they are found in the map.
+	 * FIXME: Need someone from JDT team with context to confirm this is correct (or let's see which tests this breaks)
+	 *
+	 * If it turns out it matters, we probably need to look for an alternative to HashtableOfObject (or restore its behavior here)
+	 */
+	nextSelector : for (MethodBinding[] inherited : this.inheritedMethods.values()) {
+		if (inherited == null) continue nextSelector;
 		if (inherited.length == 1) continue nextSelector;
 
 		int index = -1;
@@ -1029,7 +1063,7 @@ void verify() {
 		if (var.superInterfaces == Binding.NO_SUPERINTERFACES) continue;
 		if (var.superInterfaces.length == 1 && var.superclass.id == TypeIds.T_JavaLangObject) continue;
 
-		this.currentMethods = new HashtableOfObject(0);
+		this.currentMethods = new HashtableOfObject<>(0);
 		ReferenceBinding superclass = var.superclass();
 		if (superclass.kind() == Binding.TYPE_PARAMETER)
 			superclass = (ReferenceBinding) superclass.erasure();

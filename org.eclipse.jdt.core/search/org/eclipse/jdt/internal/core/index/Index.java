@@ -13,11 +13,14 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core.index;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
 import java.util.regex.Pattern;
 
 import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.core.search.*;
+import org.eclipse.jdt.core.search.IJavaSearchScope;
+import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.internal.compiler.util.HashtableOfObject;
 import org.eclipse.jdt.internal.compiler.util.SimpleSet;
 import org.eclipse.jdt.internal.core.search.indexing.ReadWriteMonitor;
@@ -154,7 +157,7 @@ public EntryResult[] query(char[][] categories, char[] key, int matchRule) throw
 		}
 	}
 
-	HashtableOfObject results;
+	HashtableOfObject<EntryResult> results;
 	int rule = matchRule & MATCH_RULE_INDEX_MASK;
 	if (this.memoryIndex.hasChanged()) {
 		results = this.diskIndex.addQueryResults(categories, key, rule, this.memoryIndex);
@@ -164,15 +167,8 @@ public EntryResult[] query(char[][] categories, char[] key, int matchRule) throw
 	}
 	if (results == null) return null;
 
-	EntryResult[] entryResults = new EntryResult[results.elementSize];
-	int count = 0;
-	Object[] values = results.valueTable;
-	for (int i = 0, l = values.length; i < l; i++) {
-		EntryResult result = (EntryResult) values[i];
-		if (result != null)
-			entryResults[count++] = result;
-	}
-	return entryResults;
+	Collection<EntryResult> values = results.values();
+	return values.toArray(new EntryResult[values.size()]);
 }
 /**
  * Returns the document names that contain the given substring, if null then returns all of them.

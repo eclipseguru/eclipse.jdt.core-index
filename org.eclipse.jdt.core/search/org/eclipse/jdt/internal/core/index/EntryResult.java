@@ -15,30 +15,32 @@ package org.eclipse.jdt.internal.core.index;
 
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.util.SimpleSet;
+import org.eclipse.jdt.internal.core.index.DiskIndex.CacheEntry;
+import org.eclipse.jdt.internal.core.index.DiskIndex.IntList;
 
 public class EntryResult {
 
 private char[] word;
-private Object[] documentTables;
+private CacheEntry[] documentTables;
 private SimpleSet documentNames;
 
-public EntryResult(char[] word, Object table) {
+public EntryResult(char[] word, CacheEntry table) {
 	this.word = word;
 	if (table != null)
-		this.documentTables = new Object[] {table};
+		this.documentTables = new CacheEntry[] {table};
 }
 public void addDocumentName(String documentName) {
 	if (this.documentNames == null)
 		this.documentNames = new SimpleSet(3);
 	this.documentNames.add(documentName);
 }
-public void addDocumentTable(Object table) {
+public void addDocumentTable(CacheEntry table) {
 	if (this.documentTables != null) {
 		int length = this.documentTables.length;
-		System.arraycopy(this.documentTables, 0, this.documentTables = new Object[length + 1], 0, length);
+		System.arraycopy(this.documentTables, 0, this.documentTables = new CacheEntry[length + 1], 0, length);
 		this.documentTables[length] = table;
 	} else {
-		this.documentTables = new Object[] {table};
+		this.documentTables = new CacheEntry[] {table};
 	}
 }
 public char[] getWord() {
@@ -48,19 +50,19 @@ public String[] getDocumentNames(Index index) throws java.io.IOException {
 	if (this.documentTables != null) {
 		int length = this.documentTables.length;
 		if (length == 1 && this.documentNames == null) { // have a single table
-			Object offset = this.documentTables[0];
-			int[] numbers = index.diskIndex.readDocumentNumbers(offset);
-			String[] names = new String[numbers.length];
-			for (int i = 0, l = numbers.length; i < l; i++)
-				names[i] = index.diskIndex.readDocumentName(numbers[i]);
+			CacheEntry offset = this.documentTables[0];
+			IntList numbers = index.diskIndex.readDocumentNumbers(offset);
+			String[] names = new String[numbers.size];
+			for (int i = 0, l = numbers.size; i < l; i++)
+				names[i] = index.diskIndex.readDocumentName(numbers.elements[i]);
 			return names;
 		}
 
 		for (int i = 0; i < length; i++) {
-			Object offset = this.documentTables[i];
-			int[] numbers = index.diskIndex.readDocumentNumbers(offset);
-			for (int j = 0, k = numbers.length; j < k; j++)
-				addDocumentName(index.diskIndex.readDocumentName(numbers[j]));
+			CacheEntry offset = this.documentTables[i];
+			IntList numbers = index.diskIndex.readDocumentNumbers(offset);
+			for (int j = 0, k = numbers.size; j < k; j++)
+				addDocumentName(index.diskIndex.readDocumentName(numbers.elements[j]));
 		}
 	}
 

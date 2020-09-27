@@ -100,13 +100,13 @@ class CompilationUnitResolver extends Compiler {
 	 * The sources that were requested.
 	 * Map from file name (char[]) to org.eclipse.jdt.internal.compiler.env.ICompilationUnit.
 	 */
-	HashtableOfObject requestedSources;
+	HashtableOfObject<org.eclipse.jdt.internal.compiler.env.ICompilationUnit> requestedSources;
 
 	/*
 	 * The binding keys that were requested.
 	 * Map from file name (char[]) to BindingKey (or ArrayList if multiple keys in the same file).
 	 */
-	HashtableOfObject requestedKeys;
+	HashtableOfObject<Object> requestedKeys;
 
 	DefaultBindingResolver.BindingTables bindingTables;
 
@@ -235,7 +235,7 @@ class CompilationUnitResolver extends Compiler {
 		}
 
 		// walk the binding keys
-		this.requestedKeys = new HashtableOfObject();
+		this.requestedKeys = new HashtableOfObject<>();
 		for (int i = 0; i < keyLength; i++) {
 			BindingKeyResolver resolver = new BindingKeyResolver(bindingKeys[i], this, this.lookupEnvironment);
 			resolver.parse(true/*pause after fully qualified name*/);
@@ -965,14 +965,13 @@ class CompilationUnitResolver extends Compiler {
 
 			// remaining binding keys
 			DefaultBindingResolver resolver = new DefaultBindingResolver(this.lookupEnvironment, owner, this.bindingTables, (flags & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0, true);
-			Object[] keys = this.requestedKeys.valueTable;
-			for (int j = 0, keysLength = keys.length; j < keysLength; j++) {
-				BindingKeyResolver keyResolver = (BindingKeyResolver) keys[j];
+			for (Object requestedKey : this.requestedKeys.values()) {
+				BindingKeyResolver keyResolver = (BindingKeyResolver) requestedKey;
 				if (keyResolver == null) continue;
 				Binding compilerBinding = keyResolver.getCompilerBinding();
 				IBinding binding = compilerBinding == null ? null : resolver.getBinding(compilerBinding);
 				// pass it to requestor
-				astRequestor.acceptBinding(((BindingKeyResolver) this.requestedKeys.valueTable[j]).getKey(), binding);
+				astRequestor.acceptBinding(keyResolver.getKey(), binding);
 				worked(1);
 			}
 		} catch (OperationCanceledException e) {
@@ -1045,7 +1044,7 @@ class CompilationUnitResolver extends Compiler {
 
 					// requested AST
 					char[] fileName = unit.compilationResult.getFileName();
-					org.eclipse.jdt.internal.compiler.env.ICompilationUnit source = (org.eclipse.jdt.internal.compiler.env.ICompilationUnit) this.requestedSources.get(fileName);
+					org.eclipse.jdt.internal.compiler.env.ICompilationUnit source = this.requestedSources.get(fileName);
 					if (source != null) {
 						// convert AST
 						CompilationResult compilationResult = unit.compilationResult;
@@ -1100,14 +1099,13 @@ class CompilationUnitResolver extends Compiler {
 
 			// remaining binding keys
 			DefaultBindingResolver resolver = new DefaultBindingResolver(this.lookupEnvironment, null, this.bindingTables, (flags & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0, true);
-			Object[] keys = this.requestedKeys.valueTable;
-			for (int j = 0, keysLength = keys.length; j < keysLength; j++) {
-				BindingKeyResolver keyResolver = (BindingKeyResolver) keys[j];
+			for (Object requestedKey : this.requestedKeys.values()) {
+				BindingKeyResolver keyResolver = (BindingKeyResolver) requestedKey;
 				if (keyResolver == null) continue;
 				Binding compilerBinding = keyResolver.getCompilerBinding();
 				IBinding binding = compilerBinding == null ? null : resolver.getBinding(compilerBinding);
 				// pass it to requestor
-				astRequestor.acceptBinding(((BindingKeyResolver) this.requestedKeys.valueTable[j]).getKey(), binding);
+				astRequestor.acceptBinding(keyResolver.getKey(), binding);
 				worked(1);
 			}
 		} catch (OperationCanceledException e) {
@@ -1296,12 +1294,10 @@ class CompilationUnitResolver extends Compiler {
 		if (unitIndexToProcess < this.requestedSources.size() && unitIndexToProcess < this.requestedKeys.size())
 			return false; // must process at least this many units before checking to see if all are done
 
-		Object[] sources = this.requestedSources.valueTable;
-		for (int i = 0, l = sources.length; i < l; i++)
-			if (sources[i] != null) return false;
-		Object[] keys = this.requestedKeys.valueTable;
-		for (int i = 0, l = keys.length; i < l; i++)
-			if (keys[i] != null) return false;
+		for (Object requestedSource : this.requestedSources.values())
+			if (requestedSource != null) return false;
+		for (Object requestedKey : this.requestedKeys.values())
+			if (requestedKey != null) return false;
 		return true;
 	}
 

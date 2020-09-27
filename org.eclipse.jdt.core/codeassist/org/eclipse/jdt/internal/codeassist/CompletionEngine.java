@@ -978,7 +978,7 @@ public final class CompletionEngine
 
 		if(length == 0) return;
 
-		HashtableOfObject onDemandFound = new HashtableOfObject();
+		HashtableOfObject<AcceptedConstructor> onDemandFound = new HashtableOfObject<>();
 
 		ArrayList deferredProposals = null;
 		if (DEFER_QUALIFIED_PROPOSALS) {
@@ -1134,7 +1134,7 @@ public final class CompletionEngine
 					char[] fullyQualifiedEnclosingTypeOrPackageName = null;
 
 					AcceptedConstructor foundConstructor = null;
-					if((foundConstructor = (AcceptedConstructor)onDemandFound.get(simpleTypeName)) == null) {
+					if((foundConstructor = onDemandFound.get(simpleTypeName)) == null) {
 						for (int j = 0; j < this.onDemandImportCacheCount; j++) {
 							ImportBinding importBinding = this.onDemandImportsCache[j];
 
@@ -1206,74 +1206,69 @@ public final class CompletionEngine
 				}
 			}
 
-			char[][] keys = onDemandFound.keyTable;
-			Object[] values = onDemandFound.valueTable;
-			int max = keys.length;
-			for (int i = 0; i < max; i++) {
+			int count = 0;
+			for (AcceptedConstructor value : onDemandFound.values()) {
 
 				// does not check cancellation for every types to avoid performance loss
-				if ((i % CHECK_CANCEL_FREQUENCY) == 0) checkCancel();
+				if ((++count % CHECK_CANCEL_FREQUENCY) == 0) checkCancel();
 
-				if(keys[i] != null) {
-					AcceptedConstructor value = (AcceptedConstructor) values[i];
-					if(value != null) {
-						char[] fullyQualifiedEnclosingTypeOrPackageName = null;
-						done : for (int j = 0; j < this.onDemandImportCacheCount; j++) {
-							ImportBinding importBinding = this.onDemandImportsCache[j];
+				if(value != null) {
+					char[] fullyQualifiedEnclosingTypeOrPackageName = null;
+					done : for (int j = 0; j < this.onDemandImportCacheCount; j++) {
+						ImportBinding importBinding = this.onDemandImportsCache[j];
 
-							char[][] importName = importBinding.compoundName;
-							char[] importFlatName = CharOperation.concatWith(importName, '.');
+						char[][] importName = importBinding.compoundName;
+						char[] importFlatName = CharOperation.concatWith(importName, '.');
 
-							if(fullyQualifiedEnclosingTypeOrPackageName == null) {
-								fullyQualifiedEnclosingTypeOrPackageName = value.packageName;
-							}
-							if(CharOperation.equals(fullyQualifiedEnclosingTypeOrPackageName, importFlatName)) {
-								if(importBinding.isStatic()) {
-									if((value.modifiers & ClassFileConstants.AccStatic) != 0) {
-										value.mustBeQualified = true;
-										break done;
-									}
-								} else {
+						if(fullyQualifiedEnclosingTypeOrPackageName == null) {
+							fullyQualifiedEnclosingTypeOrPackageName = value.packageName;
+						}
+						if(CharOperation.equals(fullyQualifiedEnclosingTypeOrPackageName, importFlatName)) {
+							if(importBinding.isStatic()) {
+								if((value.modifiers & ClassFileConstants.AccStatic) != 0) {
 									value.mustBeQualified = true;
 									break done;
 								}
+							} else {
+								value.mustBeQualified = true;
+								break done;
 							}
 						}
-						if (value.proposeType) {
-							proposeType(
-									value.packageName,
+					}
+					if (value.proposeType) {
+						proposeType(
+								value.packageName,
+								value.simpleTypeName,
+								value.typeModifiers,
+								value.accessibility,
+								value.simpleTypeName,
+								value.fullyQualifiedName,
+								value.mustBeQualified,
+								scope);
+					}
+
+					if (value.proposeConstructor && !Flags.isEnum(value.modifiers)) {
+						if (!value.mustBeQualified) {
+							proposeConstructor(
 									value.simpleTypeName,
+									value.parameterCount,
+									value.signature,
+									value.parameterTypes,
+									value.parameterNames,
+									value.modifiers,
+									value.packageName,
 									value.typeModifiers,
 									value.accessibility,
 									value.simpleTypeName,
 									value.fullyQualifiedName,
 									value.mustBeQualified,
-									scope);
-						}
-
-						if (value.proposeConstructor && !Flags.isEnum(value.modifiers)) {
-							if (!value.mustBeQualified) {
-								proposeConstructor(
-										value.simpleTypeName,
-										value.parameterCount,
-										value.signature,
-										value.parameterTypes,
-										value.parameterNames,
-										value.modifiers,
-										value.packageName,
-										value.typeModifiers,
-										value.accessibility,
-										value.simpleTypeName,
-										value.fullyQualifiedName,
-										value.mustBeQualified,
-										scope,
-										value.extraFlags);
+									scope,
+									value.extraFlags);
+						} else {
+							if (DEFER_QUALIFIED_PROPOSALS) {
+								deferredProposals.add(value);
 							} else {
-								if (DEFER_QUALIFIED_PROPOSALS) {
-									deferredProposals.add(value);
-								} else {
-									proposeConstructor(value, scope);
-								}
+								proposeConstructor(value, scope);
 							}
 						}
 					}
@@ -1462,7 +1457,7 @@ public final class CompletionEngine
 
 		if(length == 0) return;
 
-		HashtableOfObject onDemandFound = new HashtableOfObject();
+		HashtableOfObject<AcceptedType> onDemandFound = new HashtableOfObject<>();
 
 		try {
 			next : for (int i = 0; i < length; i++) {
@@ -1558,7 +1553,7 @@ public final class CompletionEngine
 						char[] fullyQualifiedEnclosingTypeOrPackageName = null;
 
 						AcceptedType foundType = null;
-						if((foundType = (AcceptedType)onDemandFound.get(simpleTypeName)) == null) {
+						if((foundType = onDemandFound.get(simpleTypeName)) == null) {
 							for (int j = 0; j < this.onDemandImportCacheCount; j++) {
 								ImportBinding importBinding = this.onDemandImportsCache[j];
 
@@ -1642,24 +1637,19 @@ public final class CompletionEngine
 				}
 			}
 
-			char[][] keys = onDemandFound.keyTable;
-			Object[] values = onDemandFound.valueTable;
-			int max = keys.length;
-			for (int i = 0; i < max; i++) {
-				if ((i % CHECK_CANCEL_FREQUENCY) == 0) checkCancel();
-				if(keys[i] != null) {
-					AcceptedType value = (AcceptedType) values[i];
-					if(value != null) {
-						proposeType(
-								value.packageName,
-								value.simpleTypeName,
-								value.modifiers,
-								value.accessibility,
-								value.qualifiedTypeName,
-								value.fullyQualifiedName,
-								value.mustBeQualified,
-								scope);
-					}
+			int count = 0;
+			for (AcceptedType value : onDemandFound.values()) {
+				if ((++count % CHECK_CANCEL_FREQUENCY) == 0) checkCancel();
+				if(value != null) {
+					proposeType(
+							value.packageName,
+							value.simpleTypeName,
+							value.modifiers,
+							value.accessibility,
+							value.qualifiedTypeName,
+							value.fullyQualifiedName,
+							value.mustBeQualified,
+							scope);
 				}
 			}
 		} finally {

@@ -30,7 +30,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.jdt.internal.compiler.ast.*;
+import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.TypeReference;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.problem.ProblemReporter;
@@ -41,13 +43,13 @@ import org.eclipse.jdt.internal.compiler.util.Sorting;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public abstract class MethodVerifier extends ImplicitNullAnnotationVerifier {
 	SourceTypeBinding type;
-	HashtableOfObject inheritedMethods;
-	HashtableOfObject currentMethods;
+	HashtableOfObject<MethodBinding[]> inheritedMethods;
+	HashtableOfObject<MethodBinding[]> currentMethods;
 	/**
 	 * Methods that are to be considered inherited even though they are overridden somewhere in the
 	 * hierarchy - notably for bridge method generation
 	 */
-	HashtableOfObject inheritedOverriddenMethods;
+	HashtableOfObject<MethodBinding[]> inheritedOverriddenMethods;
 	/*
 Binding creation is responsible for reporting all problems with types:
 	- all modifier problems (duplicates & multiple visibility modifiers + incompatible combinations - abstract/final)
@@ -200,7 +202,7 @@ void checkAgainstInheritedMethods(MethodBinding currentMethod, MethodBinding[] m
 		if (!inheritedMethod.isStatic() && !inheritedMethod.isFinal())
 			checkForBridgeMethod(currentMethod, inheritedMethod, allInheritedMethods);
 	}
-	MethodBinding[] overridden = (MethodBinding[])this.inheritedOverriddenMethods.get(currentMethod.selector);
+	MethodBinding[] overridden = this.inheritedOverriddenMethods.get(currentMethod.selector);
 	if (overridden != null) {
 		for (int i = overridden.length; --i >= 0;) {
 			MethodBinding inheritedMethod = overridden[i];
@@ -211,7 +213,7 @@ void checkAgainstInheritedMethods(MethodBinding currentMethod, MethodBinding[] m
 	}
 }
 void addBridgeMethodCandidate(MethodBinding overriddenMethod) {
-	MethodBinding[] existing = (MethodBinding[])this.inheritedOverriddenMethods.get(overriddenMethod.selector);
+	MethodBinding[] existing = this.inheritedOverriddenMethods.get(overriddenMethod.selector);
 	if (existing == null) {
 		existing = new MethodBinding[]{overriddenMethod};
 	} else {
@@ -531,9 +533,9 @@ void computeInheritedMethods(ReferenceBinding superclass, ReferenceBinding[] sup
 	// only want to remember inheritedMethods that can have an impact on the current type
 	// if an inheritedMethod has been 'replaced' by a supertype's method then skip it, however
     // see usage of canOverridingMethodDifferInErasure below.
-	this.inheritedMethods = new HashtableOfObject(51); // maps method selectors to an array of methods... must search to match paramaters & return type
+	this.inheritedMethods = new HashtableOfObject<>(51); // maps method selectors to an array of methods... must search to match paramaters & return type
 
-	this.inheritedOverriddenMethods = new HashtableOfObject(11);
+	this.inheritedOverriddenMethods = new HashtableOfObject<>(11);
 	ReferenceBinding superType = superclass;
 	HashtableOfObject nonVisibleDefaultMethods = new HashtableOfObject(3); // maps method selectors to an array of methods
 
@@ -544,7 +546,7 @@ void computeInheritedMethods(ReferenceBinding superclass, ReferenceBinding[] sup
 			MethodBinding inheritedMethod = methods[m];
 			if (inheritedMethod.isPrivate() || inheritedMethod.isConstructor() || inheritedMethod.isDefaultAbstract())
 				continue nextMethod;
-			MethodBinding[] existingMethods = (MethodBinding[]) this.inheritedMethods.get(inheritedMethod.selector);
+			MethodBinding[] existingMethods = this.inheritedMethods.get(inheritedMethod.selector);
 			if (existingMethods != null) {
 				existing : for (int i = 0, length = existingMethods.length; i < length; i++) {
 					MethodBinding existingMethod = existingMethods[i];
@@ -595,7 +597,7 @@ void computeInheritedMethods(ReferenceBinding superclass, ReferenceBinding[] sup
 				if (inheritedMethod.isAbstract() && !this.type.isAbstract()) // non visible abstract methods cannot be overridden so the type must be defined abstract
 					problemReporter().abstractMethodCannotBeOverridden(this.type, inheritedMethod);
 
-				MethodBinding[] current = (MethodBinding[]) this.currentMethods.get(inheritedMethod.selector);
+				MethodBinding[] current = this.currentMethods.get(inheritedMethod.selector);
 				if (current != null && !inheritedMethod.isStatic()) { // non visible methods cannot be overridden so a warning is issued
 					foundMatch : for (int i = 0, length = current.length; i < length; i++) {
 						if (!current[i].isStatic() && areMethodsCompatible(current[i], inheritedMethod)) {
@@ -638,7 +640,7 @@ void computeInheritedMethods(ReferenceBinding superclass, ReferenceBinding[] sup
 			nextMethod : for (int m = methods.length; --m >= 0;) { // Interface methods are all abstract public
 				MethodBinding inheritedMethod = methods[m];
 				if (inheritedMethod.isStatic() || inheritedMethod.isPrivate()) continue nextMethod;
-				MethodBinding[] existingMethods = (MethodBinding[]) this.inheritedMethods.get(inheritedMethod.selector);
+				MethodBinding[] existingMethods = this.inheritedMethods.get(inheritedMethod.selector);
 				if (existingMethods == null) {
 					existingMethods = new MethodBinding[] {inheritedMethod};
 				} else {
@@ -686,11 +688,11 @@ protected boolean canOverridingMethodDifferInErasure(MethodBinding overridingMet
 void computeMethods() {
 	MethodBinding[] methods = this.type.methods();
 	int size = methods.length;
-	this.currentMethods = new HashtableOfObject(size == 0 ? 1 : size); // maps method selectors to an array of methods... must search to match paramaters & return type
+	this.currentMethods = new HashtableOfObject<>(size == 0 ? 1 : size); // maps method selectors to an array of methods... must search to match paramaters & return type
 	for (int m = size; --m >= 0;) {
 		MethodBinding method = methods[m];
 		if (!(method.isConstructor() || method.isDefaultAbstract())) { // keep all methods which are NOT constructors or default abstract
-			MethodBinding[] existingMethods = (MethodBinding[]) this.currentMethods.get(method.selector);
+			MethodBinding[] existingMethods = this.currentMethods.get(method.selector);
 			if (existingMethods == null)
 				existingMethods = new MethodBinding[1];
 			else

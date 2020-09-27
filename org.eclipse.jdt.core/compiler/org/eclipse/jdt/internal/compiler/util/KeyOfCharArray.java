@@ -9,7 +9,7 @@ import java.util.Arrays;
  * <code>Arrays.hashCode</code> and <code>Arrays.equals</code>.
  * </p>
  */
-public class KeyOfCharArray implements Comparable<KeyOfCharArray>{
+public class KeyOfCharArray implements Comparable<KeyOfCharArray> {
 	private final char[] key;
 
 	public KeyOfCharArray(char[] key) {
@@ -33,6 +33,10 @@ public class KeyOfCharArray implements Comparable<KeyOfCharArray>{
 		return Arrays.equals(this.key, other.key);
 	}
 
+	public char[] getCharArray() {
+		return this.key;
+	}
+
 	/**
 	 * @return <code>Arrays.toString</code> of the underlying array
 	 */
@@ -46,6 +50,10 @@ public class KeyOfCharArray implements Comparable<KeyOfCharArray>{
 	 */
 	@Override
 	public String toString() {
-		return Arrays.toString(this.key);
+		String s = ""; //$NON-NLS-1$
+		if (this.key != null)
+			for (char c : this.key)
+				s += c;
+		return "[" + s + "]"; //$NON-NLS-1$ //$NON-NLS-2$
 	}
 }
