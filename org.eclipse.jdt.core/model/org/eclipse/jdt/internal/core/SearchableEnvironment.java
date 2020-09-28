@@ -932,23 +932,26 @@ private void findPackagesFromRequires(char[] prefix, boolean isMatchAllPrefix, I
 					//$FALL-THROUGH$
 				case AnyNamed:
 					char[][] names = CharOperation.NO_CHAR_CHAR;
-					IPackageFragmentRoot[] packageRoots = this.nameLookup.packageFragmentRoots;
-					boolean containsUnnamed = false;
-					for (IPackageFragmentRoot packageRoot : packageRoots) {
-						IPackageFragmentRoot[] singleton = { packageRoot };
-						if (strategy.matches(singleton, locs -> locs[0] instanceof JrtPackageFragmentRoot || getModuleDescription(locs) != null)) {
-							if (this.nameLookup.isPackage(pkgName, singleton)) {
-								IModuleDescription moduleDescription = getModuleDescription(singleton);
-								char[] aName;
-								if (moduleDescription != null) {
-									aName = moduleDescription.getElementName().toCharArray();
-								} else {
-									if (containsUnnamed)
-										continue;
-									containsUnnamed = true;
-									aName = ModuleBinding.UNNAMED;
+					IPackageFragment[] fragments = this.nameLookup.findPackageFragments(Util.concatWith(pkgName, '.'), false);
+					if(fragments != null) {
+						boolean containsUnnamed = false;
+						for (IPackageFragment fragment : fragments) {
+							IPackageFragmentRoot packageRoot = (IPackageFragmentRoot) fragment.getAncestor(IJavaElement.PACKAGE_FRAGMENT_ROOT);
+							IPackageFragmentRoot[] singleton = { packageRoot };
+							if (strategy.matches(singleton, locs -> locs[0] instanceof JrtPackageFragmentRoot || getModuleDescription(locs) != null)) {
+								if (this.nameLookup.isPackage(pkgName, singleton)) {
+									IModuleDescription moduleDescription = getModuleDescription(singleton);
+									char[] aName;
+									if (moduleDescription != null) {
+										aName = moduleDescription.getElementName().toCharArray();
+									} else {
+										if (containsUnnamed)
+											continue;
+										containsUnnamed = true;
+										aName = ModuleBinding.UNNAMED;
+									}
+									names = CharOperation.arrayConcat(names, aName);
 								}
-								names = CharOperation.arrayConcat(names, aName);
 							}
 						}
 					}
