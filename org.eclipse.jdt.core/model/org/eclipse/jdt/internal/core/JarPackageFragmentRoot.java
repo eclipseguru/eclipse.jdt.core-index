@@ -62,10 +62,18 @@ import org.eclipse.jdt.internal.core.util.Util;
  * @see org.eclipse.jdt.core.IPackageFragmentRoot
  * @see org.eclipse.jdt.internal.core.JarPackageFragmentRootInfo
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
 public class JarPackageFragmentRoot extends PackageFragmentRoot {
 
-	protected final static ArrayList EMPTY_LIST = new ArrayList();
+	protected final static ArrayList<String> EMPTY_LIST = new ArrayList<>(1);
+
+	protected static final class PackageChildren {
+		protected List<String> java;
+		protected List<String> nonJava;
+		public PackageChildren() {
+			this.java = EMPTY_LIST;
+			this.nonJava = EMPTY_LIST;
+		}
+	}
 
 	/**
 	 * The path to the jar file
@@ -120,12 +128,12 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 	 */
 	@Override
 	protected boolean computeChildren(OpenableElementInfo info, IResource underlyingResource) throws JavaModelException {
-		final HashtableOfStringArrayToObject<ArrayList[]> rawPackageInfo = new HashtableOfStringArrayToObject<>();
+		final HashtableOfStringArrayToObject<PackageChildren> rawPackageInfo = new HashtableOfStringArrayToObject<>();
 		final Map<String, String> overridden = new HashMap<>();
 		IJavaElement[] children = NO_ELEMENTS;
 		try {
 			// always create the default package
-			rawPackageInfo.put(CharOperation.NO_STRINGS, new ArrayList[] { EMPTY_LIST, EMPTY_LIST });
+			rawPackageInfo.put(CharOperation.NO_STRINGS, new PackageChildren());
 
 			boolean usedIndex = false;
 			if (JavaIndex.isEnabled()) {
@@ -223,7 +231,7 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 		((JarPackageFragmentRootInfo) info).overriddenClasses = overridden;
 		return true;
 	}
-	protected IJavaElement[] createChildren(final HashtableOfStringArrayToObject<ArrayList[]> rawPackageInfo) {
+	protected IJavaElement[] createChildren(final HashtableOfStringArrayToObject<PackageChildren> rawPackageInfo) {
 		IJavaElement[] children;
 		// loop through all of referenced packages, creating package fragments if necessary
 		// and cache the entry names in the rawPackageInfo table
@@ -373,7 +381,7 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 	public int hashCode() {
 		return this.jarPath.hashCode() + Arrays.hashCode(this.extraAttributes);
 	}
-	protected void initRawPackageInfo(HashtableOfStringArrayToObject<ArrayList[]> rawPackageInfo, String entryName, boolean isDirectory, String compliance) {
+	protected void initRawPackageInfo(HashtableOfStringArrayToObject<PackageChildren> rawPackageInfo, String entryName, boolean isDirectory, String compliance) {
 		int lastSeparator;
 		if (isDirectory) {
 			if (entryName.charAt(entryName.length() - 1) == '/') {
@@ -386,7 +394,7 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 		}
 		String[] pkgName = Util.splitOn('/', entryName, 0, lastSeparator);
 
-		ArrayList[] children = rawPackageInfo.get(pkgName);
+		PackageChildren children = rawPackageInfo.get(pkgName);
 		// initialize any missing entry
 		if(children == null) {
 			// memory optimization: when storing things in HashtableOfArrayToObject we want to intern keys
@@ -399,7 +407,7 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 
 			// find the nearest existing parent
 			String[] existingPkgName = null;
-			ArrayList[] existingPkgInfo = null;
+			PackageChildren existingPkgInfo = null;
 			for (int existingLength = pkgName.length-1; existingLength >= 0; existingLength--) {
 				existingPkgName = new String[existingLength];
 				System.arraycopy(pkgName, 0, existingPkgName, 0, existingLength);
@@ -417,13 +425,13 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 					// we are lazy: instead of creating yet another package name and info array we re-use existingPkgName and existingPkgInfo
 					// this ensures they always point to the "nearest" parent
 					System.arraycopy(pkgName, 0, existingPkgName = new String[i+1], 0, i+1);
-					rawPackageInfo.put(existingPkgName, existingPkgInfo = new ArrayList[] { EMPTY_LIST, EMPTY_LIST });
+					rawPackageInfo.put(existingPkgName, existingPkgInfo = new PackageChildren());
 				} else {
 					// non-Java resource folder
 					if (!isDirectory) {
 						assert existingPkgInfo != null : "There must be a parent at this point. Otherwise the for loop and logic above is broken"; //$NON-NLS-1$
-						if (existingPkgInfo[1/*NON_JAVA*/] == EMPTY_LIST) existingPkgInfo[1/*NON_JAVA*/] = new ArrayList();
-						existingPkgInfo[1/*NON_JAVA*/].add(entryName);
+						if (existingPkgInfo.nonJava == EMPTY_LIST) existingPkgInfo.nonJava = new ArrayList<>();
+						existingPkgInfo.nonJava.add(entryName);
 					}
 					// abort
 					return;
@@ -442,12 +450,12 @@ public class JarPackageFragmentRoot extends PackageFragmentRoot {
 		// add classfile info amongst children
 
 		if (org.eclipse.jdt.internal.compiler.util.Util.isClassFileName(entryName)) {
-			if (children[0/*JAVA*/] == EMPTY_LIST) children[0/*JAVA*/] = new ArrayList();
+			if (children.java == EMPTY_LIST) children.java = new ArrayList<>();
 			String nameWithoutExtension = entryName.substring(lastSeparator + 1, entryName.length() - 6);
-			children[0/*JAVA*/].add(nameWithoutExtension);
+			children.java.add(nameWithoutExtension);
 		} else {
-			if (children[1/*NON_JAVA*/] == EMPTY_LIST) children[1/*NON_JAVA*/] = new ArrayList();
-			children[1/*NON_JAVA*/].add(entryName);
+			if (children.nonJava == EMPTY_LIST) children.nonJava = new ArrayList<>();
+			children.nonJava.add(entryName);
 		}
 
 	}

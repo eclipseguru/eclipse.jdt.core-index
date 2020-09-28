@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.eclipse.core.resources.IResource;
@@ -59,11 +58,11 @@ public class JrtPackageFragmentRoot extends JarPackageFragmentRoot implements IM
 
 	@Override
 	protected boolean computeChildren(OpenableElementInfo info, IResource underlyingResource) throws JavaModelException {
-		final HashtableOfStringArrayToObject rawPackageInfo = new HashtableOfStringArrayToObject();
+		final HashtableOfStringArrayToObject<PackageChildren> rawPackageInfo = new HashtableOfStringArrayToObject<>();
 		final String compliance = CompilerOptions.VERSION_1_8; // TODO: Java 9 Revisit
 
 		// always create the default package
-		rawPackageInfo.put(CharOperation.NO_STRINGS, new ArrayList[] { EMPTY_LIST, EMPTY_LIST });
+		rawPackageInfo.put(CharOperation.NO_STRINGS, new PackageChildren());
 
 		try {
 			org.eclipse.jdt.internal.compiler.util.JRTUtil.walkModuleImage(this.jarPath.toFile(),

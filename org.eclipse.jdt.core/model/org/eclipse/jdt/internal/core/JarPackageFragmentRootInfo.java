@@ -22,7 +22,7 @@ import org.eclipse.jdt.internal.core.util.HashtableOfStringArrayToObject;
  */
 class JarPackageFragmentRootInfo extends PackageFragmentRootInfo {
 	// a map from package name (String[]) to a size-2 array of Array<String>, the first element being the .class file names, and the second element being the non-Java resource names
-	HashtableOfStringArrayToObject rawPackageInfo;
+	HashtableOfStringArrayToObject<JarPackageFragmentRoot.PackageChildren> rawPackageInfo;
 	Map<String, String> overriddenClasses;
 
 }

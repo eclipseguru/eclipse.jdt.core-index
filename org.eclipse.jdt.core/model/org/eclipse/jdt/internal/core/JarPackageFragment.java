@@ -16,6 +16,7 @@ package org.eclipse.jdt.internal.core;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
@@ -51,16 +52,16 @@ protected JarPackageFragment(PackageFragmentRoot root, String[] names) {
 protected boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, Map newElements, IResource underlyingResource) throws JavaModelException {
 	JarPackageFragmentRoot root = (JarPackageFragmentRoot) getParent();
 	JarPackageFragmentRootInfo parentInfo = (JarPackageFragmentRootInfo) root.getElementInfo();
-	ArrayList[] entries = (ArrayList[]) parentInfo.rawPackageInfo.get(this.names);
+	JarPackageFragmentRoot.PackageChildren entries = parentInfo.rawPackageInfo.get(this.names);
 	if (entries == null)
 		throw newNotPresentException();
 	JarPackageFragmentInfo fragInfo = (JarPackageFragmentInfo) info;
 
 	// compute children
-	fragInfo.setChildren(computeChildren(entries[0/*class files*/]));
+	fragInfo.setChildren(computeChildren(entries.java));
 
 	// compute non-Java resources
-	fragInfo.setNonJavaResources(computeNonJavaResources(entries[1/*non Java resources*/]));
+	fragInfo.setNonJavaResources(computeNonJavaResources(entries.nonJava));
 
 	newElements.put(this, fragInfo);
 	return true;
@@ -69,13 +70,13 @@ protected boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, 
  * Compute the children of this package fragment. Children of jar package fragments
  * can only be IClassFile (representing .class files).
  */
-private IJavaElement[] computeChildren(ArrayList namesWithoutExtension) {
+private IJavaElement[] computeChildren(List<String> namesWithoutExtension) {
 	int size = namesWithoutExtension.size();
 	if (size == 0)
 		return NO_ELEMENTS;
 	IJavaElement[] children = new IJavaElement[size];
 	for (int i = 0; i < size; i++) {
-		String nameWithoutExtension = (String) namesWithoutExtension.get(i);
+		String nameWithoutExtension = namesWithoutExtension.get(i);
 		if (TypeConstants.MODULE_INFO_NAME_STRING.equals(nameWithoutExtension))
 			children[i] = new ModularClassFile(this);
 		else
@@ -86,7 +87,7 @@ private IJavaElement[] computeChildren(ArrayList namesWithoutExtension) {
 /**
  * Compute all the non-java resources according to the given entry names.
  */
-private Object[] computeNonJavaResources(ArrayList entryNames) {
+private Object[] computeNonJavaResources(List<String> entryNames) {
 	int length = entryNames.size();
 	if (length == 0)
 		return JavaElementInfo.NO_NON_JAVA_RESOURCES;
@@ -94,7 +95,7 @@ private Object[] computeNonJavaResources(ArrayList entryNames) {
 	HashMap childrenMap = new HashMap(); // map from IPath to ArrayList<IJarEntryResource>
 	ArrayList topJarEntries = new ArrayList();
 	for (int i = 0; i < length; i++) {
-		String resName = (String) entryNames.get(i);
+		String resName = entryNames.get(i);
 		// consider that a .java file is not a non-java resource (see bug 12246 Packages view shows .class and .java files when JAR has source)
 		if (!Util.isJavaLikeFileName(resName)) {
 			IPath filePath = new Path(resName);
