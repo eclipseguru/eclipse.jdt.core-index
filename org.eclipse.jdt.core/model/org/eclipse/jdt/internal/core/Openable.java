@@ -136,10 +136,36 @@ protected void codeComplete(
 	engine.complete(cu, position, 0, typeRoot);
 	if(performanceStats != null) {
 		performanceStats.endRun();
+		System.out.print("Event: "); //$NON-NLS-1$
+		System.out.print(performanceStats.getEvent());
+		System.out.print(" Blame: "); //$NON-NLS-1$
+		System.out.print(performanceStats.getBlameString());
+		if (performanceStats.getContext() != null) {
+			System.out.print(" Context: "); //$NON-NLS-1$
+			System.out.print(performanceStats.getContext());
+		}
+		System.out.println();
+
+		int runCount = performanceStats.getRunCount();
+		if (runCount > 0) {
+			System.out.print("Run count: "); //$NON-NLS-1$
+			System.out.print(Integer.toString(runCount));
+			System.out.println();
+
+			long runTime = performanceStats.getRunningTime();
+			if (runTime > 0) {
+				System.out.print("Duration (ms): "); //$NON-NLS-1$
+				System.out.print(Long.toString(runTime));
+				System.out.print(" ("); //$NON-NLS-1$
+				System.out.print(Integer.toString((int) (runTime / runCount)));
+				System.out.println(" average)"); //$NON-NLS-1$
+			}
+		}
+
+		System.out.println(""); //$NON-NLS-1$
 	}
 	if (NameLookup.VERBOSE) {
-		System.out.println(Thread.currentThread() + " TIME SPENT in NameLoopkup#seekTypesInSourcePackage: " + environment.nameLookup.timeSpentInSeekTypesInSourcePackage + "ms");  //$NON-NLS-1$ //$NON-NLS-2$
-		System.out.println(Thread.currentThread() + " TIME SPENT in NameLoopkup#seekTypesInBinaryPackage: " + environment.nameLookup.timeSpentInSeekTypesInBinaryPackage + "ms");  //$NON-NLS-1$ //$NON-NLS-2$
+		environment.printStats();
 	}
 }
 protected IJavaElement[] codeSelect(org.eclipse.jdt.internal.compiler.env.ICompilationUnit cu, int offset, int length, WorkingCopyOwner owner) throws JavaModelException {
@@ -171,8 +197,7 @@ protected IJavaElement[] codeSelect(org.eclipse.jdt.internal.compiler.env.ICompi
 		performanceStats.endRun();
 	}
 	if (NameLookup.VERBOSE) {
-		System.out.println(Thread.currentThread() + " TIME SPENT in NameLoopkup#seekTypesInSourcePackage: " + environment.nameLookup.timeSpentInSeekTypesInSourcePackage + "ms");  //$NON-NLS-1$ //$NON-NLS-2$
-		System.out.println(Thread.currentThread() + " TIME SPENT in NameLoopkup#seekTypesInBinaryPackage: " + environment.nameLookup.timeSpentInSeekTypesInBinaryPackage + "ms");  //$NON-NLS-1$ //$NON-NLS-2$
+		environment.printStats();
 	}
 	return requestor.getElements();
 }
